@@ -19,9 +19,13 @@ looper.onDirectoryLoaded(async (handle) => {
 
   // Phase 1: Read all ZIP file metadata (fast)
   console.log('Phase 1: Reading all ZIP metadata...')
+  looper.updateLoadingStatus(`Reading ${zipFiles.length} ZIP files...`)
+
   const allStemMetadata = []
   for (const file of zipFiles.slice(0, 1)) {
     console.log(`Reading metadata from ${file.name}...`)
+    looper.updateLoadingStatus(`Reading ${file.name}...`)
+
     try {
       const stemMetadata = await looper.readZipFileMetadata(handle, file.name)
       allStemMetadata.push(...stemMetadata)
@@ -36,6 +40,7 @@ looper.onDirectoryLoaded(async (handle) => {
   }
 
   console.log(`Total stems to decode: ${allStemMetadata.length}`)
+  looper.updateLoadingStatus(`Decoding ${allStemMetadata.length} audio files...`)
 
   // Phase 2: Progressively decode audio buffers
   console.log('Phase 2: Decoding audio progressively...')
@@ -44,6 +49,7 @@ looper.onDirectoryLoaded(async (handle) => {
     const metadata = allStemMetadata[i]
     try {
       console.log(`Decoding audio ${decodedCount + 1}/${allStemMetadata.length}: ${metadata.name}`)
+      looper.updateLoadingStatus(`Decoding ${decodedCount + 1}/${allStemMetadata.length}: ${metadata.name}`)
 
       const audioBuffer = await looper.decodeAudioForStem(audio, metadata.zipFile)
 
@@ -59,14 +65,52 @@ looper.onDirectoryLoaded(async (handle) => {
   }
 
   console.log('All audio decoding complete!')
+  looper.updateLoadingStatus('Ready to play! Click "Start Audio" when ready.')
 })
 
 looper.onCellsUpdated((activeCells) => {
   console.log('Active cells:', activeCells)
   const activeStems = looper.getActiveStems()
   console.log('Active stems:', activeStems.map(stem => `${stem.name} (${stem.kind})`))
+
+  // Show audio status with musical timing
+  if (looper.isAudioReady()) {
+    const position = looper.getMusicalPosition()
+    const bpm = looper.getMasterBPM()
+    console.log(`🎵 Playing ${activeStems.length} stems | ${bpm} BPM | Bar ${position.bar}, Beat ${position.beat}`)
+  } else {
+    console.log('⏸️ Audio not initialized - click anywhere to start')
+  }
 })
 
 looper.onStemsLoaded((stems) => {
   console.log('New stems added to grid:', stems.map(stem => `${stem.name} (${stem.kind})`))
 })
+
+// Create a named controller object for testing
+export const controller = {
+  // Helper functions for testing
+  playAll: () => {
+    looper.activateAll()
+    console.log('🎵 Playing all stems')
+  },
+  stopAll: () => {
+    looper.resetGrid()
+    console.log('⏹️ Stopped all stems')
+  },
+  setVolume: (vol: number) => {
+    looper.setMasterVolume(vol)
+    console.log(`🔊 Volume set to ${vol}`)
+  },
+  setBPM: (bpm: number) => {
+    looper.setMasterBPM(bpm)
+    console.log(`🥁 BPM set to ${bpm}`)
+  },
+  getPosition: () => {
+    const pos = looper.getMusicalPosition()
+    console.log(`📍 Bar ${pos.bar}, Beat ${pos.beat}`)
+    return pos
+  },
+  // Expose the main looper for advanced usage
+  looper
+}

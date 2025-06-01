@@ -10,6 +10,20 @@
 
 <body>
   <div id="app">
+    <!-- Audio Initialization Overlay -->
+    <div id="audioOverlay" class="audio-overlay">
+      <div class="audio-overlay-content">
+        <h2>🎵 Technolooper</h2>
+        <p>Click to start the audio engine</p>
+        <button id="startAudioBtn" class="start-audio-btn">
+          ▶️ Start Audio
+        </button>
+        <div id="loadingStatus" class="loading-status">
+          Loading stems...
+        </div>
+      </div>
+    </div>
+
     <div id="directoryPicker" class="directory-picker">
       <button id="selectDirectoryBtn" class="select-directory-btn">
         📁 Select Folder

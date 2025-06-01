@@ -120,6 +120,11 @@ function triggerCellsUpdateCallback(): void {
     onCellsUpdate(activeCells)
   }
   updateUrlWithActiveCells()
+
+  // Update audio scheduler with new active stems
+  if (audioScheduler.isAudioInitialized()) {
+    audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+  }
 }
 
 // Update URL with current active cells
@@ -355,6 +360,53 @@ function showDirectoryPicker(): void {
   if (grid) grid.style.display = 'none'
 }
 
+// Audio overlay management
+function showAudioOverlay(): void {
+  const overlay = document.getElementById('audioOverlay')
+  if (overlay) {
+    overlay.classList.remove('hidden')
+  }
+}
+
+function hideAudioOverlay(): void {
+  const overlay = document.getElementById('audioOverlay')
+  if (overlay) {
+    overlay.classList.add('hidden')
+  }
+}
+
+function updateLoadingStatus(message: string): void {
+  const status = document.getElementById('loadingStatus')
+  if (status) {
+    status.textContent = message
+  }
+}
+
+function setupAudioButton(): void {
+  const startBtn = document.getElementById('startAudioBtn')
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+      startBtn.textContent = '⏳ Starting...'
+        ; (startBtn as HTMLButtonElement).disabled = true
+
+      try {
+        await audioScheduler.initializeAudio()
+        audioScheduler.start()
+
+        // Update with current active cells if any
+        audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+
+        hideAudioOverlay()
+        console.log('🎵 Audio engine started!')
+      } catch (error) {
+        console.error('Failed to start audio:', error)
+        startBtn.textContent = '❌ Failed - Try Again'
+          ; (startBtn as HTMLButtonElement).disabled = false
+      }
+    })
+  }
+}
+
 // Initialize the application
 async function init(): Promise<void> {
   console.log('Initializing application')
@@ -368,6 +420,10 @@ async function init(): Promise<void> {
       gridSize = parsedSize
     }
   }
+
+  // Show audio overlay initially
+  showAudioOverlay()
+  setupAudioButton()
 
   // Set up directory picker button
   const selectBtn = document.getElementById('selectDirectoryBtn')
@@ -663,6 +719,20 @@ function updateCellVisuals(): void {
 
 // Setup event listeners
 function setupEventListeners(): void {
+  // Initialize audio on first user interaction
+  let audioInitialized = false
+
+  function initializeAudioOnFirstInteraction() {
+    if (!audioInitialized) {
+      audioInitialized = true
+      audioScheduler.initializeAudio().then(() => {
+        audioScheduler.start()
+        // Update with current active cells
+        audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+      })
+    }
+  }
+
   // Handle window resize
   let resizeTimeout: any
   window.addEventListener('resize', () => {
@@ -671,6 +741,10 @@ function setupEventListeners(): void {
       createGrid()
     }, 150)
   })
+
+  // Initialize audio on first pointer interaction
+  document.addEventListener('pointerdown', initializeAudioOnFirstInteraction, { once: true })
+  document.addEventListener('click', initializeAudioOnFirstInteraction, { once: true })
 
   // Prevent default touch behaviors on the grid
   const container = document.getElementById('grid') as HTMLElement
@@ -707,6 +781,15 @@ function setupEventListeners(): void {
       })
       updateCellVisuals()
       triggerCellsUpdateCallback()
+    }
+
+    if (e.key === ' ') {
+      e.preventDefault()
+      // Toggle play/pause
+      if (audioScheduler.isAudioInitialized()) {
+        // This could be expanded to include play/pause functionality
+        console.log('Space pressed - could implement play/pause')
+      }
     }
   })
 }
@@ -856,6 +939,236 @@ function updateCellWithAudioBuffer(cellIndex: number, audioBuffer: AudioBuffer):
   }
 }
 
+// Audio Scheduler Class
+class AudioScheduler {
+  private audioContext: AudioContext | null = null
+  private masterGainNode: GainNode | null = null
+  private isPlaying = false
+  private startTime = 0
+  private activeSources: Map<number, {
+    source: AudioBufferSourceNode
+    gainNode: GainNode
+    stem: Stem
+  }> = new Map()
+  private isInitialized = false
+  private fadeTime = 0.1 // 100ms fade in/out
+  private masterBPM = 120 // Default BPM, will be updated from stems
+  private beatsPerBar = 4 // 4/4 time signature
+  private barDuration = 0 // Calculated from BPM
+
+  async initializeAudio(): Promise<void> {
+    if (this.isInitialized) return
+
+    try {
+      this.audioContext = new AudioContext()
+      this.masterGainNode = this.audioContext.createGain()
+      this.masterGainNode.connect(this.audioContext.destination)
+
+      // Resume context if suspended
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume()
+      }
+
+      this.updateBarDuration()
+      this.isInitialized = true
+      console.log('Audio scheduler initialized')
+    } catch (error) {
+      console.error('Failed to initialize audio:', error)
+    }
+  }
+
+  private updateBarDuration(): void {
+    // Calculate bar duration in seconds: (60 / BPM) * beatsPerBar
+    this.barDuration = (60 / this.masterBPM) * this.beatsPerBar
+    console.log(`Bar duration: ${this.barDuration.toFixed(2)}s at ${this.masterBPM} BPM`)
+  }
+
+  setMasterBPM(bpm: number): void {
+    this.masterBPM = bpm
+    this.updateBarDuration()
+  }
+
+  private getCurrentBarPosition(): number {
+    if (!this.audioContext || !this.isPlaying) return 0
+
+    const elapsed = this.audioContext.currentTime - this.startTime
+    return elapsed % this.barDuration
+  }
+
+  private getTimeToNextBar(): number {
+    const barPosition = this.getCurrentBarPosition()
+    return this.barDuration - barPosition
+  }
+
+  private getNextBarStartTime(): number {
+    if (!this.audioContext) return 0
+
+    return this.audioContext.currentTime + this.getTimeToNextBar()
+  }
+
+  async resumeAudioContext(): Promise<void> {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      await this.audioContext.resume()
+    }
+  }
+
+  start(): void {
+    if (!this.audioContext || !this.masterGainNode) return
+
+    this.isPlaying = true
+    this.startTime = this.audioContext.currentTime
+    console.log(`Scheduler started at ${this.masterBPM} BPM`)
+  }
+
+  stop(): void {
+    this.isPlaying = false
+    this.stopAllSources()
+    console.log('Scheduler stopped')
+  }
+
+  private stopAllSources(): void {
+    for (const [cellIndex, source] of this.activeSources) {
+      this.stopSource(cellIndex, source)
+    }
+    this.activeSources.clear()
+  }
+
+  private stopSource(cellIndex: number, sourceInfo: { source: AudioBufferSourceNode, gainNode: GainNode }): void {
+    if (!this.audioContext) return
+
+    try {
+      // Fade out
+      sourceInfo.gainNode.gain.setValueAtTime(sourceInfo.gainNode.gain.value, this.audioContext.currentTime)
+      sourceInfo.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + this.fadeTime)
+
+      // Stop source after fade
+      sourceInfo.source.stop(this.audioContext.currentTime + this.fadeTime)
+    } catch (error) {
+      // Source might already be stopped
+      console.warn('Error stopping source:', error)
+    }
+  }
+
+  addStem(cellIndex: number, stem: Stem): void {
+    if (!this.audioContext || !this.masterGainNode || !stem.buffer) return
+
+    // Update master BPM from first stem if not set manually
+    if (this.masterBPM === 120 && stem.bpm) {
+      this.setMasterBPM(stem.bpm)
+    }
+
+    // Remove existing source if any
+    this.removeStem(cellIndex)
+
+    try {
+      // Create audio source
+      const source = this.audioContext.createBufferSource()
+      source.buffer = stem.buffer
+      source.loop = true
+
+      // Create gain node for individual stem volume and fading
+      const gainNode = this.audioContext.createGain()
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start silent
+
+      // Connect: source -> gainNode -> masterGain -> destination
+      source.connect(gainNode)
+      gainNode.connect(this.masterGainNode)
+
+      // Store reference
+      this.activeSources.set(cellIndex, { source, gainNode, stem })
+
+      // Calculate when to start based on bar alignment
+      let startTime: number
+      if (this.isPlaying) {
+        // Start at the next bar boundary
+        startTime = this.getNextBarStartTime()
+        const timeToNext = startTime - this.audioContext.currentTime
+        console.log(`Scheduling "${stem.name}" to start in ${timeToNext.toFixed(2)}s at next bar`)
+      } else {
+        // Start immediately if not playing
+        startTime = this.audioContext.currentTime
+      }
+
+      // Start playback
+      source.start(startTime)
+
+      // Fade in at the scheduled start time
+      gainNode.gain.setValueAtTime(0, startTime)
+      gainNode.gain.linearRampToValueAtTime(1, startTime + this.fadeTime)
+
+      console.log(`Added stem: ${stem.name} (${stem.kind}) at ${stem.bpm} BPM`)
+    } catch (error) {
+      console.error('Error adding stem:', error)
+    }
+  }
+
+  removeStem(cellIndex: number): void {
+    const sourceInfo = this.activeSources.get(cellIndex)
+    if (!sourceInfo) return
+
+    this.stopSource(cellIndex, sourceInfo)
+    this.activeSources.delete(cellIndex)
+
+    console.log(`Removed stem: ${sourceInfo.stem.name}`)
+  }
+
+  updateActiveStems(activeCells: number[], allCells: StemCell[]): void {
+    if (!this.isInitialized) return
+
+    // Get currently playing stems
+    const currentlyPlaying = new Set(this.activeSources.keys())
+    const shouldBePlaying = new Set(activeCells.filter(index =>
+      allCells[index] && allCells[index].stem && allCells[index].stem!.buffer
+    ))
+
+    // Stop stems that should no longer be playing
+    for (const cellIndex of currentlyPlaying) {
+      if (!shouldBePlaying.has(cellIndex)) {
+        this.removeStem(cellIndex)
+      }
+    }
+
+    // Start stems that should be playing
+    for (const cellIndex of shouldBePlaying) {
+      if (!currentlyPlaying.has(cellIndex)) {
+        const stem = allCells[cellIndex].stem
+        if (stem && stem.buffer) {
+          this.addStem(cellIndex, stem)
+        }
+      }
+    }
+  }
+
+  setMasterVolume(volume: number): void {
+    if (this.masterGainNode) {
+      this.masterGainNode.gain.setValueAtTime(volume, this.audioContext?.currentTime || 0)
+    }
+  }
+
+  isAudioInitialized(): boolean {
+    return this.isInitialized
+  }
+
+  // Get current musical position info
+  getMusicalPosition(): { bar: number, beat: number, position: number } {
+    if (!this.isPlaying) return { bar: 0, beat: 0, position: 0 }
+
+    const elapsed = this.getCurrentBarPosition()
+    const position = elapsed / this.barDuration
+    const beat = Math.floor(position * this.beatsPerBar) + 1
+    const totalBars = Math.floor((this.audioContext!.currentTime - this.startTime) / this.barDuration) + 1
+
+    return { bar: totalBars, beat, position }
+  }
+
+  getMasterBPM(): number {
+    return this.masterBPM
+  }
+}
+
+// Create global scheduler instance
+const audioScheduler = new AudioScheduler()
+
 // Create the looper controller object
 export const looper = {
   init,
@@ -982,4 +1295,41 @@ export const looper = {
   readZipFile,
   readZipFileMetadata,
   decodeAudioForStem,
+
+  // Audio Scheduler controls
+  initializeAudio: (): Promise<void> => {
+    return audioScheduler.initializeAudio()
+  },
+
+  startPlayback: (): void => {
+    audioScheduler.start()
+  },
+
+  stopPlayback: (): void => {
+    audioScheduler.stop()
+  },
+
+  setMasterVolume: (volume: number): void => {
+    audioScheduler.setMasterVolume(volume)
+  },
+
+  isAudioReady: (): boolean => {
+    return audioScheduler.isAudioInitialized()
+  },
+
+  // Musical timing controls
+  setMasterBPM: (bpm: number): void => {
+    audioScheduler.setMasterBPM(bpm)
+  },
+
+  getMasterBPM: (): number => {
+    return audioScheduler.getMasterBPM()
+  },
+
+  getMusicalPosition: (): { bar: number, beat: number, position: number } => {
+    return audioScheduler.getMusicalPosition()
+  },
+
+  // Audio overlay management
+  updateLoadingStatus,
 }
