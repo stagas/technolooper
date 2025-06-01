@@ -1883,19 +1883,19 @@ class AudioScheduler {
       delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry signal
 
       // Connect delay chain:
-      // filterNode -> delayDryNode (dry path) -> gainNode
-      // filterNode -> delayWorkletNode (WET signal from worklet) -> delayWetNode -> gainNode
+      // source -> delayDryNode (dry path) -> filterNode
+      // source -> delayWorkletNode (WET signal from worklet) -> delayWetNode -> filterNode
 
-      filterNode.connect(delayDryNode)
-      filterNode.connect(delayWorkletNode) // Input to worklet
+      source.connect(delayDryNode)
+      source.connect(delayWorkletNode) // Input to worklet
       delayWorkletNode.connect(delayWetNode) // Output from worklet (wet signal)
 
-      // Mix wet and dry signals into gain node
-      delayDryNode.connect(gainNode)
-      delayWetNode.connect(gainNode)
+      // Mix wet and dry signals into filter node
+      delayDryNode.connect(filterNode)
+      delayWetNode.connect(filterNode)
 
-      // Connect: source -> filterNode -> delay(wet+dry) -> gainNode -> masterGain -> destination
-      source.connect(filterNode)
+      // Connect: source -> delay(wet+dry) -> filterNode -> gainNode -> masterGain -> destination
+      filterNode.connect(gainNode)
       gainNode.connect(this.masterGainNode)
 
       // Store reference
