@@ -951,7 +951,7 @@ class AudioScheduler {
     stem: Stem
   }> = new Map()
   private isInitialized = false
-  private fadeTime = 0.1 // 100ms fade in/out
+  private fadeTime = 0.005 // 5ms fade in/out - very quick to avoid clicks
   private masterBPM = 120 // Default BPM, will be updated from stems
   private beatsPerBar = 4 // 4/4 time signature
   private barDuration = 0 // Calculated from BPM
