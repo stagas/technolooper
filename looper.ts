@@ -113,6 +113,7 @@ interface CellParameters {
   filter: number // -1 to 1 (negative = low-pass, positive = high-pass, 0 = no filter)
   delayWet: number // 0 to 1 (wet amount)
   delayTime: number // 0 to 1 (mapped exponentially to 0.1ms-2000ms)
+  delayFeedback: number // 0 to 0.95 (feedback amount for worklet)
 }
 
 const cellParameters = new Map<number, CellParameters>()
@@ -125,7 +126,8 @@ function initializeCellParameters(cellIndex: number): void {
       volume: 1,
       filter: 0, // No filter by default
       delayWet: 0,
-      delayTime: 0
+      delayTime: 0,
+      delayFeedback: 0.3 // Default feedback, matches worklet default pre-control
     })
   }
 }
@@ -973,6 +975,16 @@ function setupEventListeners(): void {
       handleDelayWetChange(value)
     })
   }
+
+  // Delay Feedback slider
+  const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
+  if (delayFeedbackSlider) {
+    delayFeedbackSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      // When delayFeedbackSlider changes, it calls handleDelayFeedbackChange
+      handleDelayFeedbackChange(value)
+    })
+  }
 }
 
 // Setup control row event listeners
@@ -1153,6 +1165,16 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
     // Setup Delay Time (using existing updateDelayTimeControl)
     updateDelayTimeControl(cellParams.delayTime)
 
+    // Setup Delay Feedback
+    const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
+    const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
+    if (delayFeedbackSlider && delayFeedbackParameterValue) {
+      // Feedback is 0-0.95, slider is 0-95 for easier display
+      const currentDelayFeedback = Math.round(cellParams.delayFeedback * 100)
+      delayFeedbackSlider.value = currentDelayFeedback.toString()
+      delayFeedbackParameterValue.textContent = `${currentDelayFeedback}%`
+    }
+
   } else { // Generic slider case (volume, filter)
     if (sliderControl) sliderControl.style.display = 'flex'
     controlState.currentParameter = parameter // Set specific parameter for handleParameterChange
@@ -1208,6 +1230,13 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
           const exponentialValue = Math.pow(currentValue / 100, 3) // This was for generic slider, direct delayTime doesn't go through here.
           const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
           sliderParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+          break
+        case 'delayFeedback': // New case for feedback
+          parameterSlider.min = '0'
+          parameterSlider.max = '100'
+          currentValue = Math.round(currentValue * 100)
+          parameterSlider.value = currentValue.toString()
+          sliderParameterValue.textContent = `${currentValue}%`
           break
       }
     }
@@ -1277,19 +1306,24 @@ function updateDelayTimeControl(delayTime: number): void {
 function handleDelayTimeChange(sliderValue: number): void {
   if (controlState.controlledCellIndex === null) return
 
-  const actualValue = sliderValue / 100 // Convert percentage to 0-1
+  // Convert slider value (0-100) to exponential delay time (0-1)
+  // Use cubic curve for more precision at lower values
+  const normalizedValue = sliderValue / 100 // 0-1
+  const exponentialValue = Math.pow(normalizedValue, 3) // Exponential curve
 
   // Update parameter value
-  setCellParameter(controlState.controlledCellIndex, 'delayTime', actualValue)
+  setCellParameter(controlState.controlledCellIndex, 'delayTime', exponentialValue)
+
+  // Calculate actual delay time in ms for display
+  const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
 
   // Update display
   const delayParameterValue = document.getElementById('delayParameterValue')
   if (delayParameterValue) {
-    // Calculate actual delay time in ms for display
-    const exponentialValue = Math.pow(actualValue, 3)
-    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
     delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
   }
+
+  console.log(`🕐 Delay time: slider=${sliderValue}%, exponential=${exponentialValue.toFixed(3)}, ms=${delayTimeMs.toFixed(1)}`)
 }
 
 function handleDelayWetChange(sliderValue: number): void {
@@ -1304,6 +1338,24 @@ function handleDelayWetChange(sliderValue: number): void {
   const delayWetParameterValue = document.getElementById('delayWetParameterValue')
   if (delayWetParameterValue) {
     delayWetParameterValue.textContent = `${sliderValue}%`
+  }
+}
+
+function handleDelayFeedbackChange(sliderValue: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  const actualValue = sliderValue / 100 // Convert percentage to 0-0.95 range (max feedback 0.95)
+  // The worklet caps at 0.95, so slider 0-100 maps to 0-1, then capped by worklet
+  // Or, for more precision at high values, map 0-100 to 0-0.95 directly:
+  // const actualValue = (sliderValue / 100) * 0.95;
+
+  // Update parameter value
+  setCellParameter(controlState.controlledCellIndex, 'delayFeedback', actualValue)
+
+  // Update display for delayFeedbackSlider
+  const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
+  if (delayFeedbackParameterValue) {
+    delayFeedbackParameterValue.textContent = `${sliderValue}%`
   }
 }
 
@@ -1348,6 +1400,12 @@ function handleParameterChange(sliderValue: number): void {
       displayText = `${delayTimeMs.toFixed(1)}ms`
       unit = ''
       break
+    case 'delayFeedback': // New case for feedback
+      actualValue = sliderValue / 100 // Convert percentage to 0-0.95 range (max feedback 0.95)
+      displayValue = sliderValue
+      unit = '%'
+      displayText = `${displayValue}${unit}`
+      break
   }
 
   // Update parameter value
@@ -1385,43 +1443,51 @@ function handleBPMDelaySync(fraction: number): void {
 
   const stemBPM = cell.stem.bpm
 
-  // Calculate BPM-synced delay time using the AudioScheduler method
-  const delayTimeValue = audioScheduler.calculateBPMDelayTime(fraction, stemBPM)
+  // Calculate BPM-synced delay time directly (copied from AudioScheduler.calculateBPMDelayTime)
+  // Calculate the duration of the fraction in seconds
+  const beatDuration = 60 / stemBPM // Duration of one beat in seconds
+  const noteDuration = beatDuration * fraction // Duration of the note fraction
+
+  // Map to the delay time range (0.1ms to 2000ms)
+  const minDelayMs = 0.1
+  const maxDelayMs = 2000
+  const delayTimeMs = Math.min(Math.max(noteDuration * 1000, minDelayMs), maxDelayMs)
+
+  // Convert to 0-1 range using inverse exponential mapping
+  // Since we use exponential mapping: ms = 0.1 + (value^3 * 1999.9)
+  // Solve for value: value = ((ms - 0.1) / 1999.9)^(1/3)
+  const normalizedMs = (delayTimeMs - 0.1) / 1999.9
+  const delayTimeValue = Math.pow(normalizedMs, 1 / 3)
 
   // Update parameter value
   setCellParameter(controlState.controlledCellIndex, 'delayTime', delayTimeValue)
 
-  // Update slider if we're in delay time control mode
-  if (controlState.currentParameter === 'delayTime') {
-    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
-    const sliderParameterValue = document.getElementById('sliderParameterValue')
+  // Update the specific delay time slider (not the generic parameter slider)
+  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
+  const delayParameterValue = document.getElementById('delayParameterValue')
 
-    if (parameterSlider && sliderParameterValue) {
-      const displayValue = Math.round(delayTimeValue * 100)
-      parameterSlider.value = displayValue.toString()
+  if (delayTimeSlider && delayParameterValue) {
+    // Convert to slider position (0-100)
+    const sliderValue = delayTimeValue * 100
+    delayTimeSlider.value = Math.round(sliderValue).toString()
 
-      // Calculate actual delay time in ms for display
-      const exponentialValue = Math.pow(delayTimeValue, 3)
-      const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
-
-      // Show the note fraction and ms
-      const fractionNames: { [key: number]: string } = {
-        0.0078125: '1/128',
-        0.015625: '1/64',
-        0.03125: '1/32',
-        0.0625: '1/16',
-        0.125: '1/8',
-        0.16666666666: '1/6',
-        0.25: '1/4',
-        0.33333333333: '1/3',
-        0.5: '1/2'
-      }
-      const fractionName = fractionNames[fraction] || `${fraction}`
-      sliderParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
+    // Show the note fraction and ms
+    const fractionNames: { [key: number]: string } = {
+      0.0078125: '1/128',
+      0.015625: '1/64',
+      0.03125: '1/32',
+      0.0625: '1/16',
+      0.125: '1/8',
+      0.16666666666: '1/6',
+      0.25: '1/4',
+      0.33333333333: '1/3',
+      0.5: '1/2'
     }
+    const fractionName = fractionNames[fraction] || `${fraction}`
+    delayParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
   }
 
-  console.log(`🎵 BPM delay sync: ${fraction} note = ${delayTimeValue.toFixed(3)} for cell ${controlState.controlledCellIndex}`)
+  console.log(`🎵 BPM delay sync: ${fraction} note = ${delayTimeValue.toFixed(3)} (${delayTimeMs.toFixed(1)}ms) for cell ${controlState.controlledCellIndex}`)
 }
 
 function returnToInitialControlState(): void {
@@ -1643,14 +1709,15 @@ class AudioScheduler {
     source: AudioBufferSourceNode
     gainNode: GainNode
     filterNode: BiquadFilterNode
-    delayNode: DelayNode
-    delayFeedbackNode: GainNode
+    delayWorkletNode: AudioWorkletNode // Changed from DelayNode
+    // delayFeedbackNode: GainNode // No longer needed, feedback handled by worklet
     delayWetNode: GainNode
     delayDryNode: GainNode
     stem: Stem
     currentLoopFraction: number
   }> = new Map()
   private isInitialized = false
+  private isWorkletReady = false // Flag for worklet loading
   private fadeTime = 0.005 // 5ms fade in/out - very quick to avoid clicks
   private masterBPM = 120 // Default BPM, will be updated from stems
   private beatsPerBar = 4 // 4/4 time signature
@@ -1667,6 +1734,18 @@ class AudioScheduler {
       // Resume context if suspended
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume()
+      }
+
+      // Load the AudioWorklet module
+      try {
+        console.log('Attempting to load AudioWorklet module: variable-delay-processor.js')
+        await this.audioContext.audioWorklet.addModule('variable-delay-processor.js')
+        this.isWorkletReady = true
+        console.log('✅ AudioWorklet module variable-delay-processor.js loaded successfully.')
+      } catch (e) {
+        console.error('❌ Error loading AudioWorklet module variable-delay-processor.js:', e)
+        this.isWorkletReady = false
+        // Potentially fall back to standard DelayNode or disable delay if critical
       }
 
       this.updateBarDuration()
@@ -1762,7 +1841,12 @@ class AudioScheduler {
   }
 
   addStem(cellIndex: number, stem: Stem): void {
-    if (!this.audioContext || !this.masterGainNode || !stem.buffer) return
+    if (!this.audioContext || !this.masterGainNode || !stem.buffer || !this.isWorkletReady) {
+      if (!this.isWorkletReady) {
+        console.warn('Delay Worklet not ready, cannot add stem with delay.')
+      }
+      return
+    }
 
     // Update master BPM from first stem if not set manually
     if (this.masterBPM === 120 && stem.bpm) {
@@ -1787,13 +1871,10 @@ class AudioScheduler {
       filterNode.type = 'allpass' // Start with no filtering
       filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime) // Default frequency
 
-      // Create delay nodes for delay/flanger effect
-      const delayNode = this.audioContext.createDelay(2.0) // Max 2 seconds delay
-      delayNode.delayTime.setValueAtTime(0, this.audioContext.currentTime) // Start with no delay
-
-      // Create delay feedback loop
-      const delayFeedbackNode = this.audioContext.createGain()
-      delayFeedbackNode.gain.setValueAtTime(0.3, this.audioContext.currentTime) // Moderate feedback
+      // Create AudioWorkletNode for delay
+      const delayWorkletNode = new AudioWorkletNode(this.audioContext, 'variable-delay-processor')
+      // delayWorkletNode.parameters.get('delayTime')!.setValueAtTime(0, this.audioContext.currentTime); // Initial delay time
+      // delayWorkletNode.parameters.get('feedback')!.setValueAtTime(0.3, this.audioContext.currentTime); // Initial feedback
 
       // Create wet/dry mix nodes
       const delayWetNode = this.audioContext.createGain()
@@ -1803,13 +1884,11 @@ class AudioScheduler {
 
       // Connect delay chain:
       // filterNode -> delayDryNode (dry path) -> gainNode
-      // filterNode -> delayNode -> delayFeedbackNode -> delayNode (feedback loop)
-      // filterNode -> delayNode -> delayWetNode (wet path) -> gainNode
+      // filterNode -> delayWorkletNode (WET signal from worklet) -> delayWetNode -> gainNode
+
       filterNode.connect(delayDryNode)
-      filterNode.connect(delayNode)
-      delayNode.connect(delayFeedbackNode)
-      delayFeedbackNode.connect(delayNode) // Feedback loop
-      delayNode.connect(delayWetNode)
+      filterNode.connect(delayWorkletNode) // Input to worklet
+      delayWorkletNode.connect(delayWetNode) // Output from worklet (wet signal)
 
       // Mix wet and dry signals into gain node
       delayDryNode.connect(gainNode)
@@ -1824,8 +1903,8 @@ class AudioScheduler {
         source,
         gainNode,
         filterNode,
-        delayNode,
-        delayFeedbackNode,
+        delayWorkletNode, // Store worklet node
+        // delayFeedbackNode, // Removed
         delayWetNode,
         delayDryNode,
         stem,
@@ -1889,7 +1968,7 @@ class AudioScheduler {
     this.applyFilterParameter(sourceInfo.filterNode, params.filter)
 
     // Apply delay settings
-    this.applyDelayParameters(sourceInfo, params.delayWet, params.delayTime, sourceInfo.stem.bpm)
+    this.applyDelayParameters(sourceInfo, params.delayWet, params.delayTime, params.delayFeedback, sourceInfo.stem.bpm)
   }
 
   private applyFilterParameter(filterNode: BiquadFilterNode, filterValue: number): void {
@@ -1919,8 +1998,8 @@ class AudioScheduler {
     }
   }
 
-  private applyDelayParameters(sourceInfo: any, wetAmount: number, delayTime: number, stemBPM: number): void {
-    if (!this.audioContext) return
+  private applyDelayParameters(sourceInfo: any, wetAmount: number, delayTime: number, feedbackAmount: number, stemBPM: number): void {
+    if (!this.audioContext || !sourceInfo.delayWorkletNode) return
 
     // Calculate delay time in seconds with exponential mapping
     // 0-1 maps to 0.1ms-2000ms exponentially for flanger to long delay
@@ -1928,14 +2007,24 @@ class AudioScheduler {
     const delayTimeMs = 0.1 + (exponentialValue * 1999.9) // 0.1ms to 2000ms
     const delayTimeSeconds = delayTimeMs / 1000
 
-    // Apply delay time
-    sourceInfo.delayNode.delayTime.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+    // Apply delay time to the worklet
+    const workletDelayTimeParam = sourceInfo.delayWorkletNode.parameters.get('delayTime')
+    if (workletDelayTimeParam) {
+      workletDelayTimeParam.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+    }
 
-    // Apply wet/dry mix
+    // Apply feedback to the worklet
+    const workletFeedbackParam = sourceInfo.delayWorkletNode.parameters.get('feedback')
+    if (workletFeedbackParam) {
+      // feedbackAmount is 0-1 from slider, worklet expects 0-0.95
+      workletFeedbackParam.setValueAtTime(Math.min(0.95, feedbackAmount), this.audioContext.currentTime)
+    }
+
+    // Apply wet/dry mix (Dry is always 100%, Wet controls the amount of delayed signal)
     sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
-    sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Dry signal always at 100%
+    sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
 
-    console.log(`🔄 Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}% (Dry at 100%)`)
+    console.log(`🔄 AW Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
   }
 
   // Calculate BPM-synced delay time
@@ -1980,12 +2069,17 @@ class AudioScheduler {
       case 'delayWet':
         // Apply delay wet amount immediately
         const params = getCellParameters(cellIndex)
-        this.applyDelayParameters(sourceInfo, value, params.delayTime, sourceInfo.stem.bpm)
+        this.applyDelayParameters(sourceInfo, value, params.delayTime, params.delayFeedback, sourceInfo.stem.bpm)
         break
       case 'delayTime':
         // Apply delay time immediately
         const currentParams = getCellParameters(cellIndex)
-        this.applyDelayParameters(sourceInfo, currentParams.delayWet, value, sourceInfo.stem.bpm)
+        this.applyDelayParameters(sourceInfo, currentParams.delayWet, value, currentParams.delayFeedback, sourceInfo.stem.bpm)
+        break
+      case 'delayFeedback': // New case for feedback
+        // Apply delay feedback amount immediately
+        const fbParams = getCellParameters(cellIndex)
+        this.applyDelayParameters(sourceInfo, fbParams.delayWet, fbParams.delayTime, value, sourceInfo.stem.bpm)
         break
     }
   }

@@ -455,6 +455,7 @@ body {
   font-weight: bold;
 }
 
+/* Parameter slider base styles - consolidated for all sliders */
 .parameter-slider {
   flex: 1;
   height: 20px;
@@ -464,7 +465,8 @@ body {
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
-  margin: 0 20px;
+  margin: 0;
+  width: 100%;
   align-self: center;
 }
 
@@ -501,6 +503,16 @@ body {
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.8);
 }
 
+/* Special margin override for main parameter slider that needs side margins */
+.slider-control .parameter-slider {
+  margin: 0 20px;
+}
+
+/* Remove side margins for delay sliders in compact layout */
+.delay-settings-control .slider-control .parameter-slider {
+  margin: 0;
+}
+
 .stem-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -523,148 +535,57 @@ body {
 .delay-settings-control {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: stretch;
   justify-content: space-around;
-  gap: 10px; /* Reduced gap between Wet and Time sections */
+  gap: 8px;
   flex: 1;
-  padding: 5px; /* Reduced padding */
+  padding: 5px;
   height: 100%;
 }
 
-/* Styling for individual delay sections (Wet and Time) */
-/* This rule targets #delayWetControl and #delayTimeControl */
-.delay-settings-control > div {
-  flex: 1;
+/* Delay Wet, Feedback, and Time Controls - all same size and style */
+.delay-settings-control #delayWetControl,
+.delay-settings-control #delayFeedbackControl,
+.delay-settings-control #delayTimeControl {
   display: flex;
-  /* flex-direction: column; /* This will be overridden by #delayTimeControl specifically */
+  flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
-  padding: 0; /* Reduced padding */
-}
-
-/* Horizontal layout for parameter info and slider in #delayWetControl */
-.delay-settings-control #delayWetControl.slider-control {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  gap: 10px;
-  margin-bottom: 0; /* Removed margin */
-}
-
-.delay-settings-control #delayWetControl.slider-control .parameter-info {
-  width: auto;
-  min-width: 80px;
-  flex-shrink: 0;
-  margin-bottom: 0;
-  text-align: left;
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
+  justify-content: center;
   gap: 5px;
-  padding: 2px 5px;
-  height: auto;
-  background: none;
-}
-.delay-settings-control #delayWetControl.slider-control .parameter-info span {
-  font-size: 0.8rem;
-  margin-bottom: 0;
-}
-.delay-settings-control #delayWetControl.slider-control .parameter-info span:last-child {
-  font-size: 0.9rem;
-  font-weight: normal;
-}
-
-
-/* Delay Time Control (#delayTimeControl) - now a flex row */
-#delayTimeControl { /* More specific selector */
-  display: flex !important; /* Ensure this overrides .delay-settings-control > div */
-  flex-direction: row !important; /* Slider col | Buttons col */
-  align-items: stretch !important; /* Make columns equal height */
-  justify-content: space-between; /* Space between slider and buttons */
-  gap: 10px; /* Space between the two columns */
-  flex: 1; /* Take available width in its parent */
-  padding: 0 !important; /* Reset padding */
+  flex: 1; /* All sliders get equal space */
   height: 100%;
-}
-
-/* New Column for Slider + Info */
-.delay-time-slider-column {
-  flex: 1; /* Take half the space */
-  display: flex;
-  flex-direction: column; /* Stack info and slider vertically */
-  align-items: stretch;
-  justify-content: center; /* Center content vertically */
-  gap: 5px; /* Space between info and slider */
-  padding: 0 5px; /* Padding for this column */
-}
-
-.delay-time-slider-group { /* Contains info + slider */
-  display: flex;
-  flex-direction: column; /* Stack info and slider */
-  align-items: stretch;
-  gap: 5px;
-  width: 100%;
-  margin-bottom: 0; /* No margin as it's stacked in its column */
-}
-
-/* Parameter info within the delay time slider column */
-.delay-time-slider-column .parameter-info {
-  width: auto;
-  text-align: center; /* Center text for the label */
-  display: flex;
-  flex-direction: column; /* Stack "Delay Time" and value */
-  align-items: center;
-  gap: 2px;
-  padding: 0;
-  height: auto;
-  background: none;
-  min-width: unset; /* Remove min-width */
-}
-.delay-time-slider-column .parameter-info span {
-  font-size: 0.75rem; /* Even smaller font */
-  margin-bottom: 0;
-}
-.delay-time-slider-column .parameter-info span:last-child {
-  font-size: 0.85rem;
-  font-weight: normal;
-}
-
-/* Slider within the delay time slider column */
-.delay-time-slider-column .parameter-slider {
-  flex-grow: 0; /* Don't grow, let width be 100% */
-  width: 100%; /* Take full width of its column */
   margin: 0;
-  height: 18px;
+  padding: 5px;
+  min-width: 0;
 }
 
-/* New Column for Buttons Grid */
-.delay-sync-buttons-column {
-  flex: 1; /* Take half the space */
+/* Delay sync buttons column - gets remaining space */
+.delay-settings-control .delay-sync-buttons-column {
+  flex: 1; /* Equal space with slider, so buttons get same space as one slider */
   display: flex;
-  align-items: stretch; /* Stretch the grid to fill height */
-  justify-content: center; /* Center grid if it's smaller */
-  padding: 0 5px; /* Padding for this column */
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
 }
 
-.delay-sync-buttons {
+.delay-settings-control .delay-sync-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr); /* Explicitly 3 rows */
+  grid-template-rows: repeat(3, 1fr);
   gap: 3px;
-  width: 100%; /* Take full width of its column */
-  height: 100%; /* Take full height of its column */
-  /* margin-top: 0; /* Removed from previous */
+  width: 100%;
+  height: 100%;
   align-items: stretch;
   justify-items: stretch;
 }
 
-.delay-sync-btn {
+.delay-settings-control .delay-sync-btn {
   background: linear-gradient(135deg, #3d4758, #5a6578);
   border: 1px solid #4a5568;
   border-radius: 4px;
   color: white;
-  padding: 2px; /* Minimal padding */
+  padding: 2px;
   cursor: pointer;
   font-family: 'SF Mono', Monaco, 'Consolas', monospace;
   font-size: 9px;
@@ -676,30 +597,55 @@ body {
   text-align: center;
   word-break: keep-all;
   white-space: nowrap;
-  min-height: unset; /* Let grid row define height */
-  height: 100%; /* Fill grid cell */
-  width: 100%; /* Fill grid cell */
+  min-height: unset;
+  height: 100%;
+  width: 100%;
 }
 
-/* Remove specific first/last child radius if using grid effectively */
-.delay-sync-btn:first-child,
-.delay-sync-btn:last-child {
-  border-radius: 4px; /* Consistent radius for all grid items */
-}
-
-.delay-sync-btn:hover {
+.delay-settings-control .delay-sync-btn:hover {
   background: linear-gradient(135deg, #4a5568, #667eea);
   border-color: #8b9dc3;
   transform: translateY(-1px);
 }
 
-.delay-sync-btn:active {
+.delay-settings-control .delay-sync-btn:active {
   background: linear-gradient(135deg, #667eea, #764ba2);
   transform: translateY(0);
 }
 
-.delay-sync-btn.active {
+.delay-settings-control .delay-sync-btn.active {
   background: linear-gradient(135deg, #667eea, #764ba2);
   border-color: #8b9dc3;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Parameter info styling for all delay controls - consolidated */
+.delay-settings-control .parameter-info {
+  width: 100%;
+  min-width: unset;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 4px 8px;
+  height: auto;
+  background: rgba(45, 55, 72, 0.3);
+  border-radius: 4px;
+}
+
+.delay-settings-control .parameter-info span {
+  font-size: 0.75rem;
+  margin-bottom: 0;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.delay-settings-control .parameter-info span:last-child {
+  font-weight: bold;
+  font-size: 0.8rem;
+  color: #fff;
 }

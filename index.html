@@ -87,37 +87,43 @@
             <!-- Delay Wet Slider -->
             <div id="delayWetControl" class="slider-control">
               <div class="parameter-info">
-                <span id="delayWetParameterLabel">Delay Wet</span>
+                <span id="delayWetParameterLabel">Wet</span>
                 <span id="delayWetParameterValue">0%</span>
               </div>
               <input type="range" id="delayWetSlider" class="parameter-slider" min="0" max="100" value="0" step="1">
             </div>
 
-            <!-- Delay Time Control with BPM Sync (Moved Inside) -->
-            <div id="delayTimeControl" class="delay-time-control">
-              <div class="delay-time-slider-column">
-                <div class="delay-time-slider-group">
-                  <div class="parameter-info">
-                    <span id="delayParameterLabel">Delay Time</span>
-                    <span id="delayParameterValue">0.1ms</span>
-                  </div>
-                  <input type="range" id="delayTimeSlider" class="parameter-slider" min="0" max="100" value="0"
-                    step="1">
-                </div>
+            <!-- Delay Feedback Slider -->
+            <div id="delayFeedbackControl" class="slider-control">
+              <div class="parameter-info">
+                <span id="delayFeedbackParameterLabel">FB</span>
+                <span id="delayFeedbackParameterValue">30%</span>
               </div>
+              <input type="range" id="delayFeedbackSlider" class="parameter-slider" min="0" max="95" value="30"
+                step="1">
+            </div>
 
-              <div class="delay-sync-buttons-column">
-                <div class="delay-sync-buttons">
-                  <button class="delay-sync-btn" data-fraction="0.0078125">1/128</button>
-                  <button class="delay-sync-btn" data-fraction="0.015625">1/64</button>
-                  <button class="delay-sync-btn" data-fraction="0.03125">1/32</button>
-                  <button class="delay-sync-btn" data-fraction="0.0625">1/16</button>
-                  <button class="delay-sync-btn" data-fraction="0.125">1/8</button>
-                  <button class="delay-sync-btn" data-fraction="0.16666666666">1/6</button>
-                  <button class="delay-sync-btn" data-fraction="0.25">1/4</button>
-                  <button class="delay-sync-btn" data-fraction="0.33333333333">1/3</button>
-                  <button class="delay-sync-btn" data-fraction="0.5">1/2</button>
-                </div>
+            <!-- Delay Time Control with BPM Sync (Moved Inside) -->
+            <div id="delayTimeControl" class="slider-control">
+              <div class="parameter-info">
+                <span id="delayParameterLabel">Time</span>
+                <span id="delayParameterValue">0.1ms</span>
+              </div>
+              <input type="range" id="delayTimeSlider" class="parameter-slider" min="0" max="100" value="0" step="1">
+            </div>
+
+            <!-- Delay Sync Buttons -->
+            <div class="delay-sync-buttons-column">
+              <div class="delay-sync-buttons">
+                <button class="delay-sync-btn" data-fraction="0.0078125">1/128</button>
+                <button class="delay-sync-btn" data-fraction="0.015625">1/64</button>
+                <button class="delay-sync-btn" data-fraction="0.03125">1/32</button>
+                <button class="delay-sync-btn" data-fraction="0.0625">1/16</button>
+                <button class="delay-sync-btn" data-fraction="0.125">1/8</button>
+                <button class="delay-sync-btn" data-fraction="0.16666666666">1/6</button>
+                <button class="delay-sync-btn" data-fraction="0.25">1/4</button>
+                <button class="delay-sync-btn" data-fraction="0.33333333333">1/3</button>
+                <button class="delay-sync-btn" data-fraction="0.5">1/2</button>
               </div>
             </div>
           </div>
