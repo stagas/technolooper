@@ -22,7 +22,7 @@ looper.onDirectoryLoaded(async (handle) => {
   looper.updateLoadingStatus(`Reading ${zipFiles.length} ZIP files...`)
 
   const allStemMetadata = []
-  for (const file of zipFiles.slice(0, 1)) {
+  for (const file of zipFiles) {
     console.log(`Reading metadata from ${file.name}...`)
     looper.updateLoadingStatus(`Reading ${file.name}...`)
 
