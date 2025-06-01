@@ -1,0 +1,110 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: #0a0a0a;
+  color: #ffffff;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+#app {
+  width: 100dvw;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.directory-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.select-directory-btn {
+  background: linear-gradient(135deg, #4a5568, #2d3748);
+  border: 2px solid #555;
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+}
+
+.select-directory-btn:hover {
+  background: linear-gradient(135deg, #5a6578, #3d4758);
+  border-color: #777;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.select-directory-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.directory-picker-text {
+  color: #ccc;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.grid-container {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  user-select: none;
+}
+
+.grid-cell {
+  border-radius: 4px;
+  transition: all 0.065s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #1a1a1a;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  /* border: 1px solid #333; */
+}
+
+.grid-cell:hover {
+  /* transform: scale(0.95); */
+  border-color: #555;
+}
+
+.grid-cell.active {
+  border-color: #fff;
+}
+
+.stem-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px;
+  max-width: 100%;
+}
+
+.stem-kind {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px;
+  max-width: 100%;
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
