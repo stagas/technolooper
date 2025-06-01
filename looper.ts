@@ -953,6 +953,26 @@ function setupEventListeners(): void {
       handleParameterChange(value)
     })
   }
+
+  // Delay time slider
+  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
+  if (delayTimeSlider) {
+    delayTimeSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      // When delayTimeSlider changes, it directly calls handleDelayTimeChange
+      handleDelayTimeChange(value)
+    })
+  }
+
+  // Delay Wet slider
+  const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
+  if (delayWetSlider) {
+    delayWetSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      // When delayWetSlider changes, it calls handleDelayWetChange
+      handleDelayWetChange(value)
+    })
+  }
 }
 
 // Setup control row event listeners
@@ -1028,22 +1048,15 @@ function setupControlRowEventListeners(): void {
     })
   }
 
-  // Delay buttons
-  const delayWetBtn = document.getElementById('delayWetBtn')
-  if (delayWetBtn) {
-    delayWetBtn.addEventListener('click', () => {
-      enterParameterControl('delayWet', 'Delay Wet', '%')
+  // Consolidated Delay button
+  const delayBtn = document.getElementById('delayBtn')
+  if (delayBtn) {
+    delayBtn.addEventListener('click', () => {
+      enterParameterControl('delay', 'Delay Settings', '') // New parameter type 'delay'
     })
   }
 
-  const delayTimeBtn = document.getElementById('delayTimeBtn')
-  if (delayTimeBtn) {
-    delayTimeBtn.addEventListener('click', () => {
-      enterParameterControl('delayTime', 'Delay Time', 'ms')
-    })
-  }
-
-  // Parameter slider
+  // Parameter slider (generic)
   const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
   if (parameterSlider) {
     parameterSlider.addEventListener('input', (e) => {
@@ -1096,7 +1109,7 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
   if (controlState.controlledCellIndex === null) return
 
   controlState.mode = 'parameterControl'
-  controlState.currentParameter = parameter
+  controlState.currentParameter = parameter // Set to 'delay' for the combined view
 
   // Hide cell selected controls, show parameter control
   const cellSelectedControls = document.getElementById('cellSelectedControls')
@@ -1105,52 +1118,46 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
   if (cellSelectedControls) cellSelectedControls.style.display = 'none'
   if (parameterControl) parameterControl.style.display = 'flex'
 
-  // Update parameter label
-  const parameterLabel = document.getElementById('parameterLabel')
-  const sliderParameterLabel = document.getElementById('sliderParameterLabel')
+  // Get references to all control groups
+  const loopFractionControl = document.getElementById('loopFractionControl')
+  const sliderControl = document.getElementById('sliderControl') // Generic slider
+  const delaySettingsControl = document.getElementById('delaySettingsControl') // New container for delay
+
+  // Hide all by default
+  if (loopFractionControl) loopFractionControl.style.display = 'none'
+  if (sliderControl) sliderControl.style.display = 'none'
+  if (delaySettingsControl) delaySettingsControl.style.display = 'none'
 
   if (parameter === 'loopFraction') {
-    // Show loop fraction control, hide slider control
-    const loopFractionControl = document.getElementById('loopFractionControl')
-    const sliderControl = document.getElementById('sliderControl')
-    const delayTimeControl = document.getElementById('delayTimeControl')
-
     if (loopFractionControl) loopFractionControl.style.display = 'flex'
-    if (sliderControl) sliderControl.style.display = 'none'
-    if (delayTimeControl) delayTimeControl.style.display = 'none'
-
-    // Hide parameter info for loop controls since active button shows selection
-    const parameterInfo = loopFractionControl?.querySelector('.parameter-info') as HTMLElement
-    if (parameterInfo) parameterInfo.style.display = 'none'
-
+    // ... (rest of loopFraction logic remains the same)
     // Set current loop fraction
     const cellParams = getCellParameters(controlState.controlledCellIndex)
     updateLoopFractionButtons(cellParams.loopFraction)
 
-  } else if (parameter === 'delayTime') {
-    // Show delay time control with BPM sync, hide others
-    const loopFractionControl = document.getElementById('loopFractionControl')
-    const sliderControl = document.getElementById('sliderControl')
-    const delayTimeControl = document.getElementById('delayTimeControl')
+  } else if (parameter === 'delay') { // New case for combined delay controls
+    if (delaySettingsControl) delaySettingsControl.style.display = 'flex'
+    controlState.currentParameter = 'delay' // Keep top-level parameter as 'delay'
 
-    if (loopFractionControl) loopFractionControl.style.display = 'none'
-    if (sliderControl) sliderControl.style.display = 'none'
-    if (delayTimeControl) delayTimeControl.style.display = 'flex'
-
-    // Set current delay time
     const cellParams = getCellParameters(controlState.controlledCellIndex)
+
+    // Setup Delay Wet
+    const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
+    const delayWetParameterValue = document.getElementById('delayWetParameterValue')
+    if (delayWetSlider && delayWetParameterValue) {
+      const currentDelayWet = Math.round(cellParams.delayWet * 100)
+      delayWetSlider.value = currentDelayWet.toString()
+      delayWetParameterValue.textContent = `${currentDelayWet}%`
+    }
+
+    // Setup Delay Time (using existing updateDelayTimeControl)
     updateDelayTimeControl(cellParams.delayTime)
 
-  } else {
-    // Show slider control, hide others
-    const loopFractionControl = document.getElementById('loopFractionControl')
-    const sliderControl = document.getElementById('sliderControl')
-    const delayTimeControl = document.getElementById('delayTimeControl')
-
-    if (loopFractionControl) loopFractionControl.style.display = 'none'
+  } else { // Generic slider case (volume, filter)
     if (sliderControl) sliderControl.style.display = 'flex'
-    if (delayTimeControl) delayTimeControl.style.display = 'none'
+    controlState.currentParameter = parameter // Set specific parameter for handleParameterChange
 
+    const sliderParameterLabel = document.getElementById('sliderParameterLabel')
     if (sliderParameterLabel) sliderParameterLabel.textContent = label
 
     // Set slider range and current value based on parameter
@@ -1198,7 +1205,7 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
           parameterSlider.value = currentValue.toString()
 
           // Calculate actual delay time in ms for display
-          const exponentialValue = Math.pow(currentValue / 100, 3)
+          const exponentialValue = Math.pow(currentValue / 100, 3) // This was for generic slider, direct delayTime doesn't go through here.
           const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
           sliderParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
           break
@@ -1282,6 +1289,21 @@ function handleDelayTimeChange(sliderValue: number): void {
     const exponentialValue = Math.pow(actualValue, 3)
     const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
     delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+  }
+}
+
+function handleDelayWetChange(sliderValue: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  const actualValue = sliderValue / 100 // Convert percentage to 0-1
+
+  // Update parameter value
+  setCellParameter(controlState.controlledCellIndex, 'delayWet', actualValue)
+
+  // Update display for delayWetSlider
+  const delayWetParameterValue = document.getElementById('delayWetParameterValue')
+  if (delayWetParameterValue) {
+    delayWetParameterValue.textContent = `${sliderValue}%`
   }
 }
 
@@ -1384,10 +1406,15 @@ function handleBPMDelaySync(fraction: number): void {
 
       // Show the note fraction and ms
       const fractionNames: { [key: number]: string } = {
+        0.0078125: '1/128',
+        0.015625: '1/64',
         0.03125: '1/32',
         0.0625: '1/16',
         0.125: '1/8',
-        0.25: '1/4'
+        0.16666666666: '1/6',
+        0.25: '1/4',
+        0.33333333333: '1/3',
+        0.5: '1/2'
       }
       const fractionName = fractionNames[fraction] || `${fraction}`
       sliderParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
@@ -1906,9 +1933,9 @@ class AudioScheduler {
 
     // Apply wet/dry mix
     sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
-    sourceInfo.delayDryNode.gain.setValueAtTime(1 - wetAmount, this.audioContext.currentTime) // Compensate dry signal
+    sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Dry signal always at 100%
 
-    console.log(`🔄 Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%`)
+    console.log(`🔄 Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}% (Dry at 100%)`)
   }
 
   // Calculate BPM-synced delay time
