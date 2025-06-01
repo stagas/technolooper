@@ -30,7 +30,61 @@
       </button>
       <p class="directory-picker-text">Choose a folder to work with</p>
     </div>
-    <div class="grid-container" id="grid" style="display: none;"></div>
+
+    <div class="main-content">
+      <div class="grid-container" id="grid" style="display: none;"></div>
+
+      <!-- Control Row -->
+      <div id="controlRow" class="control-row" style="display: none;">
+        <!-- Initial Control Buttons -->
+        <div id="initialControls" class="control-buttons">
+          <button id="controlBtn" class="control-btn">Control</button>
+          <button id="returnBtn" class="control-btn return-btn" style="display: none;">Return</button>
+        </div>
+
+        <!-- Cell Selected Controls -->
+        <div id="cellSelectedControls" class="control-buttons" style="display: none;">
+          <button id="detuneBtn" class="control-btn">Loop</button>
+          <button id="volumeBtn" class="control-btn">Volume</button>
+          <button id="filterBtn" class="control-btn">Filter</button>
+          <button id="returnFromCellBtn" class="control-btn return-btn">Return</button>
+        </div>
+
+        <!-- Parameter Control -->
+        <div id="parameterControl" class="parameter-control" style="display: none;">
+          <!-- Loop Fraction Control -->
+          <div id="loopFractionControl" class="playback-rate-control">
+            <div class="parameter-info">
+              <span id="parameterLabel">Loop Length</span>
+              <span id="parameterValue">Full</span>
+            </div>
+            <div class="rate-buttons">
+              <button class="rate-btn" data-fraction="0.001953125">1/512</button>
+              <button class="rate-btn" data-fraction="0.00390625">1/256</button>
+              <button class="rate-btn" data-fraction="0.0078125">1/128</button>
+              <button class="rate-btn" data-fraction="0.015625">1/64</button>
+              <button class="rate-btn" data-fraction="0.03125">1/32</button>
+              <button class="rate-btn" data-fraction="0.0625">1/16</button>
+              <button class="rate-btn" data-fraction="0.125">1/8</button>
+              <button class="rate-btn" data-fraction="0.25">1/4</button>
+              <button class="rate-btn" data-fraction="0.5">1/2</button>
+              <button class="rate-btn active" data-fraction="1">Full</button>
+            </div>
+          </div>
+
+          <!-- Generic Slider Control (for volume, filter, etc.) -->
+          <div id="sliderControl" class="slider-control">
+            <div class="parameter-info">
+              <span id="sliderParameterLabel">Parameter</span>
+              <span id="sliderParameterValue">0</span>
+            </div>
+            <input type="range" id="parameterSlider" class="parameter-slider" min="-100" max="100" value="0" step="1">
+          </div>
+
+          <button id="returnFromParamBtn" class="control-btn return-btn">Return</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script type="module" src="/client.ts"></script>
 </body>

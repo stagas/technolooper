@@ -91,6 +91,59 @@ let gridCells: StemCell[] = []
 let onCellsUpdate: ((activeCells: number[]) => void) | null = null
 let onStemsLoadedCallback: ((stems: Stem[]) => void) | null = null
 
+// Control system state
+interface ControlState {
+  mode: 'initial' | 'cellSelection' | 'parameterControl'
+  controlledCellIndex: number | null
+  currentParameter: string | null
+  isActive: boolean
+}
+
+let controlState: ControlState = {
+  mode: 'initial',
+  controlledCellIndex: null,
+  currentParameter: null,
+  isActive: false
+}
+
+// Parameter values for each cell
+interface CellParameters {
+  loopFraction: number // 1, 0.5, 0.25, 0.125, 0.0625 (full, 1/2, 1/4, 1/8, 1/16)
+  volume: number // 0 to 1
+  filter: number // -1 to 1 (negative = low-pass, positive = high-pass, 0 = no filter)
+}
+
+const cellParameters = new Map<number, CellParameters>()
+
+// Initialize default parameters for a cell
+function initializeCellParameters(cellIndex: number): void {
+  if (!cellParameters.has(cellIndex)) {
+    cellParameters.set(cellIndex, {
+      loopFraction: 1, // Full loop by default
+      volume: 1,
+      filter: 0 // No filter by default
+    })
+  }
+}
+
+// Get parameters for a cell
+function getCellParameters(cellIndex: number): CellParameters {
+  initializeCellParameters(cellIndex)
+  return cellParameters.get(cellIndex)!
+}
+
+// Set parameter for a cell
+function setCellParameter(cellIndex: number, parameter: keyof CellParameters, value: number): void {
+  initializeCellParameters(cellIndex)
+  const params = cellParameters.get(cellIndex)!
+  params[parameter] = value
+
+  // Update audio if this cell is currently playing
+  if (audioScheduler.isAudioInitialized() && gridCells[cellIndex]?.isActive) {
+    audioScheduler.updateCellParameter(cellIndex, parameter, value)
+  }
+}
+
 // Get array of active cell indices
 function getActiveCells(): number[] {
   const activeCells: number[] = []
@@ -267,6 +320,10 @@ async function findZipFiles(dirHandle: FileSystemDirectoryHandle) {
       zipFiles.push({ name, handle })
     }
   }
+
+  // Sort ZIP files alphabetically by name for consistent ordering
+  zipFiles.sort((a, b) => a.name.localeCompare(b.name))
+
   return zipFiles
 }
 
@@ -301,6 +358,14 @@ async function readZipFileMetadata(dirHandle: FileSystemDirectoryHandle, fileNam
       zipFile: file
     })
   }
+
+  // Sort stems within ZIP file for consistent ordering
+  // Sort by: 1) BPM, 2) Kind, 3) Name
+  stemMetadata.sort((a, b) => {
+    if (a.bpm !== b.bpm) return a.bpm - b.bpm
+    if (a.kind !== b.kind) return a.kind.localeCompare(b.kind)
+    return a.name.localeCompare(b.name)
+  })
 
   return stemMetadata
 }
@@ -341,15 +406,26 @@ async function readZipFile(audio: AudioContext, dirHandle: FileSystemDirectoryHa
     stems.push(stem)
   }
 
+  // Sort stems for consistent ordering
+  // Sort by: 1) BPM, 2) Kind, 3) Name
+  stems.sort((a, b) => {
+    if (a.bpm !== b.bpm) return a.bpm - b.bpm
+    if (a.kind !== b.kind) return a.kind.localeCompare(b.kind)
+    return a.name.localeCompare(b.name)
+  })
+
   return stems
 }
 
+// Show grid with control row
 function showGrid(): void {
   const directoryPicker = document.getElementById('directoryPicker')
   const grid = document.getElementById('grid')
+  const controlRow = document.getElementById('controlRow')
 
   if (directoryPicker) directoryPicker.style.display = 'none'
   if (grid) grid.style.display = 'grid'
+  if (controlRow) controlRow.style.display = 'flex'
 }
 
 function showDirectoryPicker(): void {
@@ -615,11 +691,15 @@ function createGrid(): void {
   // If no cells, hide the grid
   if (gridSize === 0) {
     container.style.display = 'none'
+    const controlRow = document.getElementById('controlRow')
+    if (controlRow) controlRow.style.display = 'none'
     return
   }
 
-  // Show the grid
+  // Show the grid and control row
   container.style.display = 'grid'
+  const controlRow = document.getElementById('controlRow')
+  if (controlRow) controlRow.style.display = 'flex'
 
   const { cols, rows } = calculateGridDimensions()
 
@@ -654,12 +734,44 @@ function createGrid(): void {
 function toggleCell(index: number): void {
   if (index < 0 || index >= gridSize) return
 
-  // Only toggle if cell has a stem
+  // Handle control mode
+  if (controlState.isActive && controlState.mode === 'cellSelection') {
+    // Select this cell for control
+    if (gridCells[index].stem) {
+      selectCellForControl(index)
+    }
+    return
+  }
+
+  // Normal toggle behavior
   if (gridCells[index].stem) {
     gridCells[index].isActive = !gridCells[index].isActive
     updateCellVisual(index)
     triggerCellsUpdateCallback()
   }
+}
+
+// Select a cell for control
+function selectCellForControl(index: number): void {
+  // Clear previous controlled cell
+  if (controlState.controlledCellIndex !== null) {
+    const prevCell = gridCells[controlState.controlledCellIndex]?.element
+    if (prevCell) {
+      prevCell.classList.remove('controlled')
+    }
+  }
+
+  // Set new controlled cell
+  controlState.controlledCellIndex = index
+  const cell = gridCells[index].element
+  if (cell) {
+    cell.classList.add('controlled')
+  }
+
+  // Switch to cell selected controls
+  showCellSelectedControls()
+
+  console.log(`Cell ${index} selected for control: ${gridCells[index].stem?.name}`)
 }
 
 // Update visual for a specific cell
@@ -718,7 +830,16 @@ function updateCellVisuals(): void {
 }
 
 // Setup event listeners
+let eventListenersSetup = false
 function setupEventListeners(): void {
+  // Prevent multiple calls
+  if (eventListenersSetup) {
+    console.log('⚠️ setupEventListeners already called, skipping')
+    return
+  }
+  eventListenersSetup = true
+  console.log('🎧 Setting up event listeners')
+
   // Initialize audio on first user interaction
   let audioInitialized = false
 
@@ -732,6 +853,9 @@ function setupEventListeners(): void {
       })
     }
   }
+
+  // Setup control row event listeners
+  setupControlRowEventListeners()
 
   // Handle window resize
   let resizeTimeout: any
@@ -791,7 +915,383 @@ function setupEventListeners(): void {
         console.log('Space pressed - could implement play/pause')
       }
     }
+
+    // ESC key to return to initial control state
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      returnToInitialControlState()
+    }
   })
+}
+
+// Setup control row event listeners
+function setupControlRowEventListeners(): void {
+  // Control button
+  const controlBtn = document.getElementById('controlBtn')
+  if (controlBtn) {
+    let clickCount = 0
+    controlBtn.addEventListener('click', () => {
+      clickCount++
+      console.log(`🎛️ Control button clicked #${clickCount}. Current state: mode=${controlState.mode}, isActive=${controlState.isActive}`)
+      console.log(`🔍 Button element:`, controlBtn)
+      console.log(`🔍 Button classes:`, controlBtn.className)
+      console.log(`🔍 Button disabled:`, (controlBtn as HTMLButtonElement).disabled)
+
+      // Toggle control mode: if already in cell selection mode, turn it off
+      if (controlState.mode === 'cellSelection' && controlState.isActive) {
+        console.log(`🔄 Click #${clickCount}: Returning to initial state from cell selection`)
+        returnToInitialControlState()
+      } else {
+        console.log(`🔄 Click #${clickCount}: Entering cell selection mode`)
+        enterCellSelectionMode()
+      }
+
+      // Debug: Check button state after click with more details
+      setTimeout(() => {
+        const hasActive = controlBtn.classList.contains('active')
+        const currentMode = controlState.mode
+        const currentIsActive = controlState.isActive
+        console.log(`🎛️ Click #${clickCount} result: hasActive=${hasActive}, mode=${currentMode}, isActive=${currentIsActive}`)
+        console.log(`🔍 Button still exists:`, document.getElementById('controlBtn') === controlBtn)
+        console.log(`🔍 Button parent:`, controlBtn.parentElement)
+        console.log(`───────────────────────────────────────`)
+      }, 10)
+    })
+  } else {
+    console.error('❌ Control button not found during setup!')
+  }
+
+  // Return buttons
+  const returnButtons = [
+    document.getElementById('returnBtn'),
+    document.getElementById('returnFromCellBtn'),
+    document.getElementById('returnFromParamBtn')
+  ]
+  returnButtons.forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', () => {
+        returnToInitialControlState()
+      })
+    }
+  })
+
+  // Parameter buttons
+  const detuneBtn = document.getElementById('detuneBtn')
+  if (detuneBtn) {
+    detuneBtn.addEventListener('click', () => {
+      enterParameterControl('loopFraction', 'Loop Length', '')
+    })
+  }
+
+  const volumeBtn = document.getElementById('volumeBtn')
+  if (volumeBtn) {
+    volumeBtn.addEventListener('click', () => {
+      enterParameterControl('volume', 'Volume', '%')
+    })
+  }
+
+  const filterBtn = document.getElementById('filterBtn')
+  if (filterBtn) {
+    filterBtn.addEventListener('click', () => {
+      enterParameterControl('filter', 'Filter', 'Hz')
+    })
+  }
+
+  // Parameter slider
+  const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+  if (parameterSlider) {
+    parameterSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      handleParameterChange(value)
+    })
+  }
+
+  // Rate buttons - set up with event delegation
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains('rate-btn')) {
+      const fraction = parseFloat(target.getAttribute('data-fraction') || '1')
+      handleLoopFractionChange(fraction)
+    }
+  })
+}
+
+// Control state management functions
+function enterCellSelectionMode(): void {
+  console.log(`📥 enterCellSelectionMode() called`)
+  console.log(`📊 State before: mode=${controlState.mode}, isActive=${controlState.isActive}`)
+
+  // Ensure clean state transition
+  controlState.mode = 'cellSelection'
+  controlState.isActive = true
+  controlState.controlledCellIndex = null
+  controlState.currentParameter = null
+
+  // Ensure initial controls are shown
+  showInitialControls()
+
+  // Update control button visual with more robust checking
+  const controlBtn = document.getElementById('controlBtn')
+  if (controlBtn) {
+    // Debug: Check current classes before adding
+    console.log('🔍 Control button classes before adding active:', controlBtn.className)
+    console.log('🔍 Control button computed style before:', window.getComputedStyle(controlBtn).background)
+
+    controlBtn.classList.add('active')
+
+    console.log('🔍 Control button classes after adding active:', controlBtn.className)
+    console.log('🔍 Control button computed style after:', window.getComputedStyle(controlBtn).background)
+    console.log('✅ Control button activated - entering cell selection mode')
+
+    // Force a style recalculation
+    controlBtn.offsetHeight
+  } else {
+    console.error('❌ Control button not found when trying to activate')
+  }
+
+  console.log(`📊 State after: mode=${controlState.mode}, isActive=${controlState.isActive}`)
+  console.log('Control mode: Select a cell to control')
+}
+
+function enterParameterControl(parameter: string, label: string, unit: string): void {
+  if (controlState.controlledCellIndex === null) return
+
+  controlState.mode = 'parameterControl'
+  controlState.currentParameter = parameter
+
+  // Hide cell selected controls, show parameter control
+  const cellSelectedControls = document.getElementById('cellSelectedControls')
+  const parameterControl = document.getElementById('parameterControl')
+
+  if (cellSelectedControls) cellSelectedControls.style.display = 'none'
+  if (parameterControl) parameterControl.style.display = 'flex'
+
+  // Update parameter label
+  const parameterLabel = document.getElementById('parameterLabel')
+  const sliderParameterLabel = document.getElementById('sliderParameterLabel')
+
+  if (parameter === 'loopFraction') {
+    // Show loop fraction control, hide slider control
+    const loopFractionControl = document.getElementById('loopFractionControl')
+    const sliderControl = document.getElementById('sliderControl')
+
+    if (loopFractionControl) loopFractionControl.style.display = 'flex'
+    if (sliderControl) sliderControl.style.display = 'none'
+
+    // Hide parameter info for loop controls since active button shows selection
+    const parameterInfo = loopFractionControl?.querySelector('.parameter-info') as HTMLElement
+    if (parameterInfo) parameterInfo.style.display = 'none'
+
+    // Set current loop fraction
+    const cellParams = getCellParameters(controlState.controlledCellIndex)
+    updateLoopFractionButtons(cellParams.loopFraction)
+
+  } else {
+    // Show slider control, hide loop fraction control
+    const loopFractionControl = document.getElementById('loopFractionControl')
+    const sliderControl = document.getElementById('sliderControl')
+
+    if (loopFractionControl) loopFractionControl.style.display = 'none'
+    if (sliderControl) sliderControl.style.display = 'flex'
+
+    if (sliderParameterLabel) sliderParameterLabel.textContent = label
+
+    // Set slider range and current value based on parameter
+    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+
+    if (parameterSlider && sliderParameterValue) {
+      const cellParams = getCellParameters(controlState.controlledCellIndex)
+      let currentValue = cellParams[parameter as keyof CellParameters]
+
+      switch (parameter) {
+        case 'volume':
+          parameterSlider.min = '0'
+          parameterSlider.max = '100'
+          currentValue = Math.round(currentValue * 100)
+          parameterSlider.value = currentValue.toString()
+          sliderParameterValue.textContent = `${currentValue}${unit}`
+          break
+        case 'filter':
+          parameterSlider.min = '-100'
+          parameterSlider.max = '100'
+          currentValue = Math.round(currentValue * 100)
+          parameterSlider.value = currentValue.toString()
+
+          // Update display based on filter type
+          if (currentValue > 0) {
+            sliderParameterValue.textContent = `High-pass ${currentValue}%`
+          } else if (currentValue < 0) {
+            sliderParameterValue.textContent = `Low-pass ${Math.abs(currentValue)}%`
+          } else {
+            sliderParameterValue.textContent = 'No Filter'
+          }
+          break
+      }
+    }
+  }
+
+  console.log(`Control mode: Adjusting ${parameter} for cell ${controlState.controlledCellIndex}`)
+}
+
+function updateLoopFractionButtons(currentFraction: number): void {
+  const fractionButtons = document.querySelectorAll('.rate-btn')
+  const parameterValue = document.getElementById('parameterValue')
+
+  // Update button states
+  fractionButtons.forEach(btn => {
+    const btnFraction = parseFloat(btn.getAttribute('data-fraction') || '1')
+    if (Math.abs(btnFraction - currentFraction) < 0.0001) { // Use smaller epsilon for float comparison
+      btn.classList.add('active')
+    } else {
+      btn.classList.remove('active')
+    }
+  })
+
+  // Update display value
+  if (parameterValue) {
+    if (Math.abs(currentFraction - 0.001953125) < 0.0001) {
+      parameterValue.textContent = '1/512'
+    } else if (Math.abs(currentFraction - 0.00390625) < 0.0001) {
+      parameterValue.textContent = '1/256'
+    } else if (Math.abs(currentFraction - 0.0078125) < 0.0001) {
+      parameterValue.textContent = '1/128'
+    } else if (Math.abs(currentFraction - 0.015625) < 0.0001) {
+      parameterValue.textContent = '1/64'
+    } else if (Math.abs(currentFraction - 0.03125) < 0.0001) {
+      parameterValue.textContent = '1/32'
+    } else if (Math.abs(currentFraction - 0.0625) < 0.0001) {
+      parameterValue.textContent = '1/16'
+    } else if (Math.abs(currentFraction - 0.125) < 0.0001) {
+      parameterValue.textContent = '1/8'
+    } else if (Math.abs(currentFraction - 0.25) < 0.0001) {
+      parameterValue.textContent = '1/4'
+    } else if (Math.abs(currentFraction - 0.5) < 0.0001) {
+      parameterValue.textContent = '1/2'
+    } else if (Math.abs(currentFraction - 1) < 0.0001) {
+      parameterValue.textContent = 'Full'
+    } else {
+      parameterValue.textContent = `${currentFraction.toFixed(6)}`
+    }
+  }
+}
+
+function handleParameterChange(sliderValue: number): void {
+  if (controlState.controlledCellIndex === null || !controlState.currentParameter) return
+
+  let actualValue = sliderValue
+  let displayValue = sliderValue
+  let displayText = ''
+  let unit = ''
+
+  // Convert slider value to actual parameter value
+  switch (controlState.currentParameter) {
+    case 'volume':
+      actualValue = sliderValue / 100 // Convert percentage to 0-1
+      displayValue = sliderValue
+      unit = '%'
+      displayText = `${displayValue}${unit}`
+      break
+    case 'filter':
+      actualValue = sliderValue / 100 // Convert percentage to -1 to 1
+      if (sliderValue > 0) {
+        displayText = `High-pass ${sliderValue}%`
+      } else if (sliderValue < 0) {
+        displayText = `Low-pass ${Math.abs(sliderValue)}%`
+      } else {
+        displayText = 'No Filter'
+      }
+      break
+  }
+
+  // Update parameter value
+  setCellParameter(
+    controlState.controlledCellIndex,
+    controlState.currentParameter as keyof CellParameters,
+    actualValue
+  )
+
+  // Update display
+  const sliderParameterValue = document.getElementById('sliderParameterValue')
+  if (sliderParameterValue) {
+    sliderParameterValue.textContent = displayText || `${displayValue}${unit}`
+  }
+}
+
+function handleLoopFractionChange(fraction: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  // Update parameter value
+  setCellParameter(controlState.controlledCellIndex, 'loopFraction', fraction)
+
+  // Update button states and display
+  updateLoopFractionButtons(fraction)
+
+  console.log(`🔄 Loop fraction set to ${fraction} for cell ${controlState.controlledCellIndex}`)
+}
+
+function returnToInitialControlState(): void {
+  console.log(`📤 returnToInitialControlState() called`)
+  console.log(`📊 State before: mode=${controlState.mode}, isActive=${controlState.isActive}`)
+
+  // Clear controlled cell visual
+  if (controlState.controlledCellIndex !== null) {
+    const cell = gridCells[controlState.controlledCellIndex]?.element
+    if (cell) {
+      cell.classList.remove('controlled')
+    }
+  }
+
+  // Reset state
+  controlState.mode = 'initial'
+  controlState.controlledCellIndex = null
+  controlState.currentParameter = null
+  controlState.isActive = false
+
+  // Reset control row visuals
+  showInitialControls()
+
+  // Remove active state from control button with more robust checking
+  const controlBtn = document.getElementById('controlBtn')
+  if (controlBtn) {
+    // Debug: Check current classes before removing
+    console.log('🔍 Control button classes before removing active:', controlBtn.className)
+    console.log('🔍 Control button computed style before:', window.getComputedStyle(controlBtn).background)
+
+    controlBtn.classList.remove('active')
+
+    console.log('🔍 Control button classes after removing active:', controlBtn.className)
+    console.log('🔍 Control button computed style after:', window.getComputedStyle(controlBtn).background)
+    console.log('✅ Control button deactivated - returning to initial state')
+
+    // Force a style recalculation
+    controlBtn.offsetHeight
+  } else {
+    console.error('❌ Control button not found when trying to deactivate')
+  }
+
+  console.log(`📊 State after: mode=${controlState.mode}, isActive=${controlState.isActive}`)
+  console.log('Control mode: Reset to initial state')
+}
+
+function showInitialControls(): void {
+  const initialControls = document.getElementById('initialControls')
+  const cellSelectedControls = document.getElementById('cellSelectedControls')
+  const parameterControl = document.getElementById('parameterControl')
+
+  if (initialControls) initialControls.style.display = 'flex'
+  if (cellSelectedControls) cellSelectedControls.style.display = 'none'
+  if (parameterControl) parameterControl.style.display = 'none'
+}
+
+function showCellSelectedControls(): void {
+  const initialControls = document.getElementById('initialControls')
+  const cellSelectedControls = document.getElementById('cellSelectedControls')
+  const parameterControl = document.getElementById('parameterControl')
+
+  if (initialControls) initialControls.style.display = 'none'
+  if (cellSelectedControls) cellSelectedControls.style.display = 'flex'
+  if (parameterControl) parameterControl.style.display = 'none'
 }
 
 // Export functions for potential external use
@@ -948,7 +1448,9 @@ class AudioScheduler {
   private activeSources: Map<number, {
     source: AudioBufferSourceNode
     gainNode: GainNode
+    filterNode: BiquadFilterNode
     stem: Stem
+    currentLoopFraction: number
   }> = new Map()
   private isInitialized = false
   private fadeTime = 0.005 // 5ms fade in/out - very quick to avoid clicks
@@ -1033,7 +1535,7 @@ class AudioScheduler {
     this.activeSources.clear()
   }
 
-  private stopSource(cellIndex: number, sourceInfo: { source: AudioBufferSourceNode, gainNode: GainNode }): void {
+  private stopSource(cellIndex: number, sourceInfo: { source: AudioBufferSourceNode, gainNode: GainNode, filterNode: BiquadFilterNode }): void {
     if (!this.audioContext) return
 
     try {
@@ -1082,12 +1584,22 @@ class AudioScheduler {
       const gainNode = this.audioContext.createGain()
       gainNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start silent
 
-      // Connect: source -> gainNode -> masterGain -> destination
-      source.connect(gainNode)
+      // Create filter node for frequency filtering
+      const filterNode = this.audioContext.createBiquadFilter()
+      filterNode.type = 'allpass' // Start with no filtering
+      filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime) // Default frequency
+
+      // Connect: source -> filterNode -> gainNode -> masterGain -> destination
+      source.connect(filterNode)
+      filterNode.connect(gainNode)
       gainNode.connect(this.masterGainNode)
 
       // Store reference
-      this.activeSources.set(cellIndex, { source, gainNode, stem })
+      this.activeSources.set(cellIndex, { source, gainNode, filterNode, stem, currentLoopFraction: 1 })
+
+      // Apply cell parameters
+      const params = getCellParameters(cellIndex)
+      this.applyCellParameters(cellIndex, params)
 
       // Calculate when to start based on bar alignment
       let startTime: number
@@ -1106,12 +1618,146 @@ class AudioScheduler {
 
       // Fade in at the scheduled start time
       gainNode.gain.setValueAtTime(0, startTime)
-      gainNode.gain.linearRampToValueAtTime(1, startTime + this.fadeTime)
+      gainNode.gain.linearRampToValueAtTime(params.volume, startTime + this.fadeTime)
 
       console.log(`Added stem: ${stem.name} (${stem.kind}) at ${stem.bpm} BPM`)
     } catch (error) {
       console.error('Error adding stem:', error)
     }
+  }
+
+  private applyCellParameters(cellIndex: number, params: CellParameters): void {
+    const sourceInfo = this.activeSources.get(cellIndex)
+    if (!sourceInfo || !this.audioContext) return
+
+    // Apply loop fraction by setting loop start and end points
+    if (sourceInfo.source.buffer && params.loopFraction < 1) {
+      const bufferDuration = sourceInfo.source.buffer.duration
+      const loopEnd = bufferDuration * params.loopFraction
+
+      sourceInfo.source.loopStart = 0
+      sourceInfo.source.loopEnd = loopEnd
+      sourceInfo.currentLoopFraction = params.loopFraction
+
+      console.log(`🔄 Set loop end to ${loopEnd.toFixed(3)}s (${params.loopFraction * 100}% of ${bufferDuration.toFixed(3)}s)`)
+    } else {
+      // Full loop
+      sourceInfo.source.loopStart = 0
+      sourceInfo.source.loopEnd = sourceInfo.source.buffer?.duration || 0
+      sourceInfo.currentLoopFraction = 1
+    }
+
+    // Always apply volume regardless of current value
+    sourceInfo.gainNode.gain.setValueAtTime(params.volume, this.audioContext.currentTime)
+
+    // Apply filter settings
+    this.applyFilterParameter(sourceInfo.filterNode, params.filter)
+  }
+
+  private applyFilterParameter(filterNode: BiquadFilterNode, filterValue: number): void {
+    if (!this.audioContext) return
+
+    if (filterValue === 0) {
+      // No filter - use allpass which doesn't affect the signal
+      filterNode.type = 'allpass'
+    } else if (filterValue > 0) {
+      // High-pass filter for positive values
+      filterNode.type = 'highpass'
+      // Very exponential mapping with squared exponent for ultra-fine control at low values
+      // 0-1 maps to 20Hz-8000Hz with steep exponential curve
+      const exponentialValue = Math.pow(filterValue, 1) // Square the input for steeper curve
+      const frequency = 20 * Math.pow(8000 / 20, exponentialValue)
+      filterNode.frequency.setValueAtTime(frequency, this.audioContext.currentTime)
+      filterNode.Q.setValueAtTime(3, this.audioContext.currentTime) // Higher resonance for more character
+    } else {
+      // Low-pass filter for negative values
+      filterNode.type = 'lowpass'
+      // Very exponential mapping with squared exponent for ultra-fine control at high values
+      const absValue = Math.abs(filterValue)
+      const exponentialValue = Math.pow(absValue, 3.5) // Square the input for steeper curve
+      const frequency = 8000 * Math.pow(20 / 8000, exponentialValue)
+      filterNode.frequency.setValueAtTime(frequency, this.audioContext.currentTime)
+      filterNode.Q.setValueAtTime(3, this.audioContext.currentTime) // Higher resonance for more character
+    }
+  }
+
+  updateCellParameter(cellIndex: number, parameter: keyof CellParameters, value: number): void {
+    const sourceInfo = this.activeSources.get(cellIndex)
+    if (!sourceInfo || !this.audioContext) return
+
+    switch (parameter) {
+      case 'loopFraction':
+        // For loop changes, we need to restart the source on the next beat
+        if (this.isPlaying && sourceInfo.currentLoopFraction !== value) {
+          this.scheduleLoopFractionChange(cellIndex, value)
+        } else if (!this.isPlaying) {
+          // If not playing, apply immediately
+          this.applyLoopFractionChange(cellIndex, value)
+        }
+        break
+      case 'volume':
+        // Schedule volume changes at the next beat boundary for sync
+        const changeTime = this.isPlaying ? this.getNextBeatTime() : this.audioContext.currentTime
+        // Always update volume regardless of current value
+        sourceInfo.gainNode.gain.setValueAtTime(value, changeTime)
+        break
+      case 'filter':
+        // Apply filter changes immediately
+        this.applyFilterParameter(sourceInfo.filterNode, value)
+        console.log(`🎛️ Filter applied: ${value > 0 ? 'High-pass' : value < 0 ? 'Low-pass' : 'No filter'} for cell ${cellIndex}`)
+        break
+    }
+  }
+
+  private getNextBeatTime(): number {
+    if (!this.audioContext || !this.isPlaying) return this.audioContext?.currentTime || 0
+
+    const elapsed = this.audioContext.currentTime - this.startTime
+    const beatDuration = (60 / this.masterBPM) // One beat duration in seconds
+    const currentBeat = Math.floor(elapsed / beatDuration)
+    const nextBeatTime = this.startTime + (currentBeat + 1) * beatDuration
+
+    return nextBeatTime
+  }
+
+  private scheduleLoopFractionChange(cellIndex: number, newFraction: number): void {
+    if (!this.audioContext) return
+
+    const nextBeatTime = this.getNextBeatTime()
+    const timeToNextBeat = nextBeatTime - this.audioContext.currentTime
+
+    console.log(`🎵 Scheduling loop fraction change to ${newFraction} in ${timeToNextBeat.toFixed(3)}s at next beat`)
+
+    // Schedule the change
+    setTimeout(() => {
+      this.applyLoopFractionChange(cellIndex, newFraction)
+    }, timeToNextBeat * 1000) // Convert to milliseconds
+  }
+
+  private applyLoopFractionChange(cellIndex: number, newFraction: number): void {
+    const sourceInfo = this.activeSources.get(cellIndex)
+    if (!sourceInfo || !this.audioContext) return
+
+    const stem = sourceInfo.stem
+    // Check if cell is active based on grid state, not gain value
+    const cellData = gridCells[cellIndex]
+    const isCurrentlyActive = cellData && cellData.isActive
+
+    if (isCurrentlyActive) {
+      // Stop the current source
+      this.removeStem(cellIndex)
+
+      // Update the stored parameter
+      setCellParameter(cellIndex, 'loopFraction', newFraction)
+
+      // Restart with new loop fraction
+      this.addStem(cellIndex, stem)
+    } else {
+      // Just update the parameter if not playing
+      setCellParameter(cellIndex, 'loopFraction', newFraction)
+    }
+
+    console.log(`✅ Applied loop fraction change to ${newFraction} for cell ${cellIndex}`)
   }
 
   removeStem(cellIndex: number): void {
@@ -1340,6 +1986,27 @@ export const looper = {
 
   getMusicalPosition: (): { bar: number, beat: number, position: number } => {
     return audioScheduler.getMusicalPosition()
+  },
+
+  // Control system
+  enterCellSelectionMode: (): void => {
+    enterCellSelectionMode()
+  },
+
+  returnToInitialControlState: (): void => {
+    returnToInitialControlState()
+  },
+
+  getControlState: (): ControlState => {
+    return { ...controlState }
+  },
+
+  setCellParameter: (cellIndex: number, parameter: keyof CellParameters, value: number): void => {
+    setCellParameter(cellIndex, parameter, value)
+  },
+
+  getCellParameters: (cellIndex: number): CellParameters => {
+    return getCellParameters(cellIndex)
   },
 
   // Audio overlay management

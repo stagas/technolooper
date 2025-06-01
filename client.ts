@@ -2,9 +2,33 @@ import { looper, type Stem } from './looper.ts'
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => looper.init())
+  document.addEventListener('DOMContentLoaded', () => {
+    looper.init()
+    // Debug: Check if control row exists
+    setTimeout(() => {
+      const controlRow = document.getElementById('controlRow')
+      console.log('Control row element:', controlRow)
+      if (controlRow) {
+        console.log('Control row display:', controlRow.style.display)
+        console.log('Control row computed style:', window.getComputedStyle(controlRow).display)
+      } else {
+        console.log('❌ Control row element not found!')
+      }
+    }, 1000)
+  })
 } else {
   looper.init()
+  // Debug: Check if control row exists
+  setTimeout(() => {
+    const controlRow = document.getElementById('controlRow')
+    console.log('Control row element:', controlRow)
+    if (controlRow) {
+      console.log('Control row display:', controlRow.style.display)
+      console.log('Control row computed style:', window.getComputedStyle(controlRow).display)
+    } else {
+      console.log('❌ Control row element not found!')
+    }
+  }, 1000)
 }
 
 // Set up directory callback
@@ -22,7 +46,7 @@ looper.onDirectoryLoaded(async (handle) => {
   looper.updateLoadingStatus(`Reading ${zipFiles.length} ZIP files...`)
 
   const allStemMetadata = []
-  for (const file of zipFiles) {
+  for (const file of zipFiles.slice(0, 1)) {
     console.log(`Reading metadata from ${file.name}...`)
     looper.updateLoadingStatus(`Reading ${file.name}...`)
 
@@ -110,6 +134,24 @@ export const controller = {
     const pos = looper.getMusicalPosition()
     console.log(`📍 Bar ${pos.bar}, Beat ${pos.beat}`)
     return pos
+  },
+  // Debug function to check control row
+  showControlRow: () => {
+    const controlRow = document.getElementById('controlRow')
+    console.log('Manual control row check:', controlRow)
+    if (controlRow) {
+      controlRow.style.display = 'flex'
+      console.log('✅ Control row forced to show')
+    } else {
+      console.log('❌ Control row not found')
+    }
+  },
+  hideControlRow: () => {
+    const controlRow = document.getElementById('controlRow')
+    if (controlRow) {
+      controlRow.style.display = 'none'
+      console.log('✅ Control row hidden')
+    }
   },
   // Expose the main looper for advanced usage
   looper
