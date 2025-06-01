@@ -1037,12 +1037,24 @@ class AudioScheduler {
     if (!this.audioContext) return
 
     try {
-      // Fade out
-      sourceInfo.gainNode.gain.setValueAtTime(sourceInfo.gainNode.gain.value, this.audioContext.currentTime)
-      sourceInfo.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + this.fadeTime)
+      // Calculate when to stop based on bar alignment
+      let stopTime: number
+      if (this.isPlaying) {
+        // Stop at the next bar boundary
+        stopTime = this.getNextBarStartTime()
+        const timeToNext = stopTime - this.audioContext.currentTime
+        console.log(`Scheduling fade out in ${timeToNext.toFixed(2)}s at next bar`)
+      } else {
+        // Stop immediately if not playing
+        stopTime = this.audioContext.currentTime
+      }
+
+      // Fade out at the scheduled stop time
+      sourceInfo.gainNode.gain.setValueAtTime(sourceInfo.gainNode.gain.value, stopTime)
+      sourceInfo.gainNode.gain.linearRampToValueAtTime(0, stopTime + this.fadeTime)
 
       // Stop source after fade
-      sourceInfo.source.stop(this.audioContext.currentTime + this.fadeTime)
+      sourceInfo.source.stop(stopTime + this.fadeTime)
     } catch (error) {
       // Source might already be stopped
       console.warn('Error stopping source:', error)
