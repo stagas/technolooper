@@ -47,6 +47,8 @@
           <button id="detuneBtn" class="control-btn">Loop</button>
           <button id="volumeBtn" class="control-btn">Volume</button>
           <button id="filterBtn" class="control-btn">Filter</button>
+          <button id="delayWetBtn" class="control-btn">Delay Wet</button>
+          <button id="delayTimeBtn" class="control-btn">Delay Time</button>
           <button id="returnFromCellBtn" class="control-btn return-btn">Return</button>
         </div>
 
@@ -79,6 +81,21 @@
               <span id="sliderParameterValue">0</span>
             </div>
             <input type="range" id="parameterSlider" class="parameter-slider" min="-100" max="100" value="0" step="1">
+          </div>
+
+          <!-- Delay Time Control with BPM Sync -->
+          <div id="delayTimeControl" class="delay-time-control" style="display: none;">
+            <div class="parameter-info">
+              <span id="delayParameterLabel">Delay Time</span>
+              <span id="delayParameterValue">0.1ms</span>
+            </div>
+            <div class="delay-sync-buttons">
+              <button class="delay-sync-btn" data-fraction="0.03125">1/32</button>
+              <button class="delay-sync-btn" data-fraction="0.0625">1/16</button>
+              <button class="delay-sync-btn" data-fraction="0.125">1/8</button>
+              <button class="delay-sync-btn" data-fraction="0.25">1/4</button>
+            </div>
+            <input type="range" id="delayTimeSlider" class="parameter-slider" min="0" max="100" value="0" step="1">
           </div>
 
           <button id="returnFromParamBtn" class="control-btn return-btn">Return</button>

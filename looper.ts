@@ -111,6 +111,8 @@ interface CellParameters {
   loopFraction: number // 1, 0.5, 0.25, 0.125, 0.0625 (full, 1/2, 1/4, 1/8, 1/16)
   volume: number // 0 to 1
   filter: number // -1 to 1 (negative = low-pass, positive = high-pass, 0 = no filter)
+  delayWet: number // 0 to 1 (wet amount)
+  delayTime: number // 0 to 1 (mapped exponentially to 0.1ms-2000ms)
 }
 
 const cellParameters = new Map<number, CellParameters>()
@@ -121,7 +123,9 @@ function initializeCellParameters(cellIndex: number): void {
     cellParameters.set(cellIndex, {
       loopFraction: 1, // Full loop by default
       volume: 1,
-      filter: 0 // No filter by default
+      filter: 0, // No filter by default
+      delayWet: 0,
+      delayTime: 0
     })
   }
 }
@@ -922,6 +926,33 @@ function setupEventListeners(): void {
       returnToInitialControlState()
     }
   })
+
+  // Rate buttons - set up with event delegation
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains('rate-btn')) {
+      const fraction = parseFloat(target.getAttribute('data-fraction') || '1')
+      handleLoopFractionChange(fraction)
+    }
+  })
+
+  // BPM delay sync buttons - set up with event delegation
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains('delay-sync-btn')) {
+      const fraction = parseFloat(target.getAttribute('data-fraction') || '0.25')
+      handleBPMDelaySync(fraction)
+    }
+  })
+
+  // Parameter slider
+  const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+  if (parameterSlider) {
+    parameterSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      handleParameterChange(value)
+    })
+  }
 }
 
 // Setup control row event listeners
@@ -997,6 +1028,21 @@ function setupControlRowEventListeners(): void {
     })
   }
 
+  // Delay buttons
+  const delayWetBtn = document.getElementById('delayWetBtn')
+  if (delayWetBtn) {
+    delayWetBtn.addEventListener('click', () => {
+      enterParameterControl('delayWet', 'Delay Wet', '%')
+    })
+  }
+
+  const delayTimeBtn = document.getElementById('delayTimeBtn')
+  if (delayTimeBtn) {
+    delayTimeBtn.addEventListener('click', () => {
+      enterParameterControl('delayTime', 'Delay Time', 'ms')
+    })
+  }
+
   // Parameter slider
   const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
   if (parameterSlider) {
@@ -1006,14 +1052,7 @@ function setupControlRowEventListeners(): void {
     })
   }
 
-  // Rate buttons - set up with event delegation
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (target.classList.contains('rate-btn')) {
-      const fraction = parseFloat(target.getAttribute('data-fraction') || '1')
-      handleLoopFractionChange(fraction)
-    }
-  })
+  // Removed duplicate delayTimeSlider setup - it's handled in setupControlRowEventListeners()
 }
 
 // Control state management functions
@@ -1074,9 +1113,11 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
     // Show loop fraction control, hide slider control
     const loopFractionControl = document.getElementById('loopFractionControl')
     const sliderControl = document.getElementById('sliderControl')
+    const delayTimeControl = document.getElementById('delayTimeControl')
 
     if (loopFractionControl) loopFractionControl.style.display = 'flex'
     if (sliderControl) sliderControl.style.display = 'none'
+    if (delayTimeControl) delayTimeControl.style.display = 'none'
 
     // Hide parameter info for loop controls since active button shows selection
     const parameterInfo = loopFractionControl?.querySelector('.parameter-info') as HTMLElement
@@ -1086,13 +1127,29 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
     const cellParams = getCellParameters(controlState.controlledCellIndex)
     updateLoopFractionButtons(cellParams.loopFraction)
 
-  } else {
-    // Show slider control, hide loop fraction control
+  } else if (parameter === 'delayTime') {
+    // Show delay time control with BPM sync, hide others
     const loopFractionControl = document.getElementById('loopFractionControl')
     const sliderControl = document.getElementById('sliderControl')
+    const delayTimeControl = document.getElementById('delayTimeControl')
+
+    if (loopFractionControl) loopFractionControl.style.display = 'none'
+    if (sliderControl) sliderControl.style.display = 'none'
+    if (delayTimeControl) delayTimeControl.style.display = 'flex'
+
+    // Set current delay time
+    const cellParams = getCellParameters(controlState.controlledCellIndex)
+    updateDelayTimeControl(cellParams.delayTime)
+
+  } else {
+    // Show slider control, hide others
+    const loopFractionControl = document.getElementById('loopFractionControl')
+    const sliderControl = document.getElementById('sliderControl')
+    const delayTimeControl = document.getElementById('delayTimeControl')
 
     if (loopFractionControl) loopFractionControl.style.display = 'none'
     if (sliderControl) sliderControl.style.display = 'flex'
+    if (delayTimeControl) delayTimeControl.style.display = 'none'
 
     if (sliderParameterLabel) sliderParameterLabel.textContent = label
 
@@ -1126,6 +1183,24 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
           } else {
             sliderParameterValue.textContent = 'No Filter'
           }
+          break
+        case 'delayWet':
+          parameterSlider.min = '0'
+          parameterSlider.max = '100'
+          currentValue = Math.round(currentValue * 100)
+          parameterSlider.value = currentValue.toString()
+          sliderParameterValue.textContent = `${currentValue}%`
+          break
+        case 'delayTime':
+          parameterSlider.min = '0'
+          parameterSlider.max = '100'
+          currentValue = Math.round(currentValue * 100)
+          parameterSlider.value = currentValue.toString()
+
+          // Calculate actual delay time in ms for display
+          const exponentialValue = Math.pow(currentValue / 100, 3)
+          const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+          sliderParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
           break
       }
     }
@@ -1176,6 +1251,40 @@ function updateLoopFractionButtons(currentFraction: number): void {
   }
 }
 
+function updateDelayTimeControl(delayTime: number): void {
+  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
+  const delayParameterValue = document.getElementById('delayParameterValue')
+
+  if (delayTimeSlider && delayParameterValue) {
+    // Set slider value
+    const displayValue = Math.round(delayTime * 100)
+    delayTimeSlider.value = displayValue.toString()
+
+    // Calculate actual delay time in ms for display
+    const exponentialValue = Math.pow(delayTime, 3)
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+    delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+  }
+}
+
+function handleDelayTimeChange(sliderValue: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  const actualValue = sliderValue / 100 // Convert percentage to 0-1
+
+  // Update parameter value
+  setCellParameter(controlState.controlledCellIndex, 'delayTime', actualValue)
+
+  // Update display
+  const delayParameterValue = document.getElementById('delayParameterValue')
+  if (delayParameterValue) {
+    // Calculate actual delay time in ms for display
+    const exponentialValue = Math.pow(actualValue, 3)
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+    delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+  }
+}
+
 function handleParameterChange(sliderValue: number): void {
   if (controlState.controlledCellIndex === null || !controlState.currentParameter) return
 
@@ -1201,6 +1310,21 @@ function handleParameterChange(sliderValue: number): void {
       } else {
         displayText = 'No Filter'
       }
+      break
+    case 'delayWet':
+      actualValue = sliderValue / 100 // Convert percentage to 0-1
+      displayValue = sliderValue
+      unit = '%'
+      displayText = `${displayValue}${unit}`
+      break
+    case 'delayTime':
+      actualValue = sliderValue / 100 // Convert percentage to 0-1
+
+      // Calculate actual delay time in ms for display
+      const exponentialValue = Math.pow(actualValue, 3)
+      const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+      displayText = `${delayTimeMs.toFixed(1)}ms`
+      unit = ''
       break
   }
 
@@ -1228,6 +1352,49 @@ function handleLoopFractionChange(fraction: number): void {
   updateLoopFractionButtons(fraction)
 
   console.log(`🔄 Loop fraction set to ${fraction} for cell ${controlState.controlledCellIndex}`)
+}
+
+function handleBPMDelaySync(fraction: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  // Get the stem's BPM for this cell
+  const cell = gridCells[controlState.controlledCellIndex]
+  if (!cell?.stem) return
+
+  const stemBPM = cell.stem.bpm
+
+  // Calculate BPM-synced delay time using the AudioScheduler method
+  const delayTimeValue = audioScheduler.calculateBPMDelayTime(fraction, stemBPM)
+
+  // Update parameter value
+  setCellParameter(controlState.controlledCellIndex, 'delayTime', delayTimeValue)
+
+  // Update slider if we're in delay time control mode
+  if (controlState.currentParameter === 'delayTime') {
+    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+
+    if (parameterSlider && sliderParameterValue) {
+      const displayValue = Math.round(delayTimeValue * 100)
+      parameterSlider.value = displayValue.toString()
+
+      // Calculate actual delay time in ms for display
+      const exponentialValue = Math.pow(delayTimeValue, 3)
+      const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+
+      // Show the note fraction and ms
+      const fractionNames: { [key: number]: string } = {
+        0.03125: '1/32',
+        0.0625: '1/16',
+        0.125: '1/8',
+        0.25: '1/4'
+      }
+      const fractionName = fractionNames[fraction] || `${fraction}`
+      sliderParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
+    }
+  }
+
+  console.log(`🎵 BPM delay sync: ${fraction} note = ${delayTimeValue.toFixed(3)} for cell ${controlState.controlledCellIndex}`)
 }
 
 function returnToInitialControlState(): void {
@@ -1449,6 +1616,10 @@ class AudioScheduler {
     source: AudioBufferSourceNode
     gainNode: GainNode
     filterNode: BiquadFilterNode
+    delayNode: DelayNode
+    delayFeedbackNode: GainNode
+    delayWetNode: GainNode
+    delayDryNode: GainNode
     stem: Stem
     currentLoopFraction: number
   }> = new Map()
@@ -1589,13 +1760,50 @@ class AudioScheduler {
       filterNode.type = 'allpass' // Start with no filtering
       filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime) // Default frequency
 
-      // Connect: source -> filterNode -> gainNode -> masterGain -> destination
+      // Create delay nodes for delay/flanger effect
+      const delayNode = this.audioContext.createDelay(2.0) // Max 2 seconds delay
+      delayNode.delayTime.setValueAtTime(0, this.audioContext.currentTime) // Start with no delay
+
+      // Create delay feedback loop
+      const delayFeedbackNode = this.audioContext.createGain()
+      delayFeedbackNode.gain.setValueAtTime(0.3, this.audioContext.currentTime) // Moderate feedback
+
+      // Create wet/dry mix nodes
+      const delayWetNode = this.audioContext.createGain()
+      const delayDryNode = this.audioContext.createGain()
+      delayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start with no wet signal
+      delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry signal
+
+      // Connect delay chain:
+      // filterNode -> delayDryNode (dry path) -> gainNode
+      // filterNode -> delayNode -> delayFeedbackNode -> delayNode (feedback loop)
+      // filterNode -> delayNode -> delayWetNode (wet path) -> gainNode
+      filterNode.connect(delayDryNode)
+      filterNode.connect(delayNode)
+      delayNode.connect(delayFeedbackNode)
+      delayFeedbackNode.connect(delayNode) // Feedback loop
+      delayNode.connect(delayWetNode)
+
+      // Mix wet and dry signals into gain node
+      delayDryNode.connect(gainNode)
+      delayWetNode.connect(gainNode)
+
+      // Connect: source -> filterNode -> delay(wet+dry) -> gainNode -> masterGain -> destination
       source.connect(filterNode)
-      filterNode.connect(gainNode)
       gainNode.connect(this.masterGainNode)
 
       // Store reference
-      this.activeSources.set(cellIndex, { source, gainNode, filterNode, stem, currentLoopFraction: 1 })
+      this.activeSources.set(cellIndex, {
+        source,
+        gainNode,
+        filterNode,
+        delayNode,
+        delayFeedbackNode,
+        delayWetNode,
+        delayDryNode,
+        stem,
+        currentLoopFraction: 1
+      })
 
       // Apply cell parameters
       const params = getCellParameters(cellIndex)
@@ -1652,6 +1860,9 @@ class AudioScheduler {
 
     // Apply filter settings
     this.applyFilterParameter(sourceInfo.filterNode, params.filter)
+
+    // Apply delay settings
+    this.applyDelayParameters(sourceInfo, params.delayWet, params.delayTime, sourceInfo.stem.bpm)
   }
 
   private applyFilterParameter(filterNode: BiquadFilterNode, filterValue: number): void {
@@ -1681,6 +1892,39 @@ class AudioScheduler {
     }
   }
 
+  private applyDelayParameters(sourceInfo: any, wetAmount: number, delayTime: number, stemBPM: number): void {
+    if (!this.audioContext) return
+
+    // Calculate delay time in seconds with exponential mapping
+    // 0-1 maps to 0.1ms-2000ms exponentially for flanger to long delay
+    const exponentialValue = Math.pow(delayTime, 3) // Cubic curve for more room at small values
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9) // 0.1ms to 2000ms
+    const delayTimeSeconds = delayTimeMs / 1000
+
+    // Apply delay time
+    sourceInfo.delayNode.delayTime.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+
+    // Apply wet/dry mix
+    sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
+    sourceInfo.delayDryNode.gain.setValueAtTime(1 - wetAmount, this.audioContext.currentTime) // Compensate dry signal
+
+    console.log(`🔄 Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%`)
+  }
+
+  // Calculate BPM-synced delay time
+  calculateBPMDelayTime(fraction: number, bpm: number): number {
+    // Calculate note duration in milliseconds
+    const beatDuration = (60 / bpm) * 1000 // One beat in ms
+    const noteDuration = beatDuration * fraction // Fraction of a beat
+
+    // Convert to 0-1 range for our exponential mapping
+    // Reverse the exponential mapping: delayTime = (ms - 0.1) / 1999.9, then cube root
+    const normalizedMs = Math.max(0, Math.min(1999.9, noteDuration - 0.1)) / 1999.9
+    const delayTimeValue = Math.pow(normalizedMs, 1 / 3) // Inverse of cubic curve
+
+    return Math.max(0, Math.min(1, delayTimeValue))
+  }
+
   updateCellParameter(cellIndex: number, parameter: keyof CellParameters, value: number): void {
     const sourceInfo = this.activeSources.get(cellIndex)
     if (!sourceInfo || !this.audioContext) return
@@ -1705,6 +1949,16 @@ class AudioScheduler {
         // Apply filter changes immediately
         this.applyFilterParameter(sourceInfo.filterNode, value)
         console.log(`🎛️ Filter applied: ${value > 0 ? 'High-pass' : value < 0 ? 'Low-pass' : 'No filter'} for cell ${cellIndex}`)
+        break
+      case 'delayWet':
+        // Apply delay wet amount immediately
+        const params = getCellParameters(cellIndex)
+        this.applyDelayParameters(sourceInfo, value, params.delayTime, sourceInfo.stem.bpm)
+        break
+      case 'delayTime':
+        // Apply delay time immediately
+        const currentParams = getCellParameters(cellIndex)
+        this.applyDelayParameters(sourceInfo, currentParams.delayWet, value, sourceInfo.stem.bpm)
         break
     }
   }
