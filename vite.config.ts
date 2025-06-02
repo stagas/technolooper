@@ -1,12 +1,33 @@
-import { defineConfig, loadEnv, type ConfigEnv, type UserConfig } from 'vite'
+import { defineConfig, loadEnv, type ConfigEnv, type Plugin, type UserConfig } from 'vite'
+import { ViteAssemblyScript } from './vite-plugin-assemblyscript.ts'
+import { BundleUrl } from './vite-plugin-bundle-url.ts'
+import { HexLoader } from './vite-plugin-hex-loader.ts'
+
+type Plugins = (Plugin | Plugin[])[]
 
 export default ({ mode }: ConfigEnv): UserConfig => {
   const dirname = process.cwd()
   const env = loadEnv(mode, dirname)
   Object.assign(process.env, env)
 
+  const buildPlugins: Plugins = [
+    HexLoader(),
+  ]
+
   return defineConfig({
-    plugins: [],
+    plugins: [
+      ...buildPlugins,
+      BundleUrl({
+        plugins: buildPlugins
+      }),
+      ViteAssemblyScript({
+        configFile: 'asconfig-delay.json',
+        projectRoot: '.',
+        srcMatch: 'as/assembly/delay',
+        srcEntryFile: 'as/assembly/delay/index.ts',
+        mapFile: './as/build/delay.wasm.map',
+      }),
+    ],
     root: '.',
     build: {
       outDir: 'dist',

@@ -1,6 +1,7 @@
 // Import idb-keyval for directory handle persistence
 import { get, set } from 'idb-keyval'
 import JSZip from 'jszip'
+import { Delay } from './delay-node.ts'
 
 export interface Stem {
   name: string
@@ -182,7 +183,9 @@ function triggerCellsUpdateCallback(): void {
 
   // Update audio scheduler with new active stems
   if (audioScheduler.isAudioInitialized()) {
-    audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+    audioScheduler.updateActiveStems(getActiveCells(), gridCells).catch(error => {
+      console.error('Error updating active stems:', error)
+    })
   }
 }
 
@@ -464,7 +467,7 @@ function updateLoadingStatus(message: string): void {
   }
 }
 
-function setupAudioButton(): void {
+async function setupAudioButton(): Promise<void> {
   const startBtn = document.getElementById('startAudioBtn')
   if (startBtn) {
     startBtn.addEventListener('click', async () => {
@@ -476,7 +479,7 @@ function setupAudioButton(): void {
         audioScheduler.start()
 
         // Update with current active cells if any
-        audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+        await audioScheduler.updateActiveStems(getActiveCells(), gridCells)
 
         hideAudioOverlay()
         console.log('🎵 Audio engine started!')
@@ -505,7 +508,7 @@ async function init(): Promise<void> {
 
   // Show audio overlay initially
   showAudioOverlay()
-  setupAudioButton()
+  await setupAudioButton()
 
   // Set up directory picker button
   const selectBtn = document.getElementById('selectDirectoryBtn')
@@ -849,14 +852,17 @@ function setupEventListeners(): void {
   // Initialize audio on first user interaction
   let audioInitialized = false
 
-  function initializeAudioOnFirstInteraction() {
+  async function initializeAudioOnFirstInteraction(): Promise<void> {
     if (!audioInitialized) {
       audioInitialized = true
-      audioScheduler.initializeAudio().then(() => {
+      try {
+        await audioScheduler.initializeAudio()
         audioScheduler.start()
         // Update with current active cells
-        audioScheduler.updateActiveStems(getActiveCells(), gridCells)
-      })
+        await audioScheduler.updateActiveStems(getActiveCells(), gridCells)
+      } catch (error) {
+        console.error('Error initializing audio:', error)
+      }
     }
   }
 
@@ -1703,21 +1709,21 @@ function updateCellWithAudioBuffer(cellIndex: number, audioBuffer: AudioBuffer):
 class AudioScheduler {
   private audioContext: AudioContext | null = null
   private masterGainNode: GainNode | null = null
+  private isDelayReady = false // Track if delay worklet is registered
   private isPlaying = false
   private startTime = 0
   private activeSources: Map<number, {
     source: AudioBufferSourceNode
     gainNode: GainNode
     filterNode: BiquadFilterNode
-    delayWorkletNode: AudioWorkletNode // Changed from DelayNode
-    // delayFeedbackNode: GainNode // No longer needed, feedback handled by worklet
+    delayNode: AudioWorkletNode // DelayNode instance
+    delayParams: { delay: AudioParam | undefined; feedback: AudioParam | undefined } // Delay parameters
     delayWetNode: GainNode
     delayDryNode: GainNode
     stem: Stem
     currentLoopFraction: number
   }> = new Map()
   private isInitialized = false
-  private isWorkletReady = false // Flag for worklet loading
   private fadeTime = 0.005 // 5ms fade in/out - very quick to avoid clicks
   private masterBPM = 120 // Default BPM, will be updated from stems
   private beatsPerBar = 4 // 4/4 time signature
@@ -1736,17 +1742,13 @@ class AudioScheduler {
         await this.audioContext.resume()
       }
 
-      // Load the AudioWorklet module
-      try {
-        console.log('Attempting to load AudioWorklet module: variable-delay-processor.js')
-        await this.audioContext.audioWorklet.addModule('variable-delay-processor.js')
-        this.isWorkletReady = true
-        console.log('✅ AudioWorklet module variable-delay-processor.js loaded successfully.')
-      } catch (e) {
-        console.error('❌ Error loading AudioWorklet module variable-delay-processor.js:', e)
-        this.isWorkletReady = false
-        // Potentially fall back to standard DelayNode or disable delay if critical
-      }
+      // Initialize DelayNode worklet registration once
+      console.log('Initializing DelayNode worklet...')
+      const testDelay = await Delay(this.audioContext)
+      this.isDelayReady = true
+      // Disconnect the test delay node as we just needed it for worklet registration
+      testDelay.node.disconnect()
+      console.log('DelayNode worklet ready')
 
       this.updateBarDuration()
       this.isInitialized = true
@@ -1840,11 +1842,9 @@ class AudioScheduler {
     }
   }
 
-  addStem(cellIndex: number, stem: Stem): void {
-    if (!this.audioContext || !this.masterGainNode || !stem.buffer || !this.isWorkletReady) {
-      if (!this.isWorkletReady) {
-        console.warn('Delay Worklet not ready, cannot add stem with delay.')
-      }
+  async addStem(cellIndex: number, stem: Stem): Promise<void> {
+    if (!this.audioContext || !this.masterGainNode || !stem.buffer || !this.isDelayReady) {
+      console.warn('Cannot add stem: audio context, master gain, stem buffer, or delay worklet not ready')
       return
     }
 
@@ -1871,10 +1871,10 @@ class AudioScheduler {
       filterNode.type = 'allpass' // Start with no filtering
       filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime) // Default frequency
 
-      // Create AudioWorkletNode for delay
-      const delayWorkletNode = new AudioWorkletNode(this.audioContext, 'variable-delay-processor')
-      // delayWorkletNode.parameters.get('delayTime')!.setValueAtTime(0, this.audioContext.currentTime); // Initial delay time
-      // delayWorkletNode.parameters.get('feedback')!.setValueAtTime(0.3, this.audioContext.currentTime); // Initial feedback
+      // Create a new DelayNode instance (worklet already registered)
+      const delayResult = await Delay(this.audioContext)
+      const delayNode = delayResult.node
+      const delayParams = { delay: delayResult.delay, feedback: delayResult.feedback }
 
       // Create wet/dry mix nodes
       const delayWetNode = this.audioContext.createGain()
@@ -1884,11 +1884,11 @@ class AudioScheduler {
 
       // Connect delay chain:
       // source -> delayDryNode (dry path) -> filterNode
-      // source -> delayWorkletNode (WET signal from worklet) -> delayWetNode -> filterNode
+      // source -> delayNode (WET signal from worklet) -> delayWetNode -> filterNode
 
       source.connect(delayDryNode)
-      source.connect(delayWorkletNode) // Input to worklet
-      delayWorkletNode.connect(delayWetNode) // Output from worklet (wet signal)
+      source.connect(delayNode) // Input to delay worklet
+      delayNode.connect(delayWetNode) // Output from delay worklet (wet signal)
 
       // Mix wet and dry signals into filter node
       delayDryNode.connect(filterNode)
@@ -1903,8 +1903,8 @@ class AudioScheduler {
         source,
         gainNode,
         filterNode,
-        delayWorkletNode, // Store worklet node
-        // delayFeedbackNode, // Removed
+        delayNode,
+        delayParams,
         delayWetNode,
         delayDryNode,
         stem,
@@ -1999,7 +1999,7 @@ class AudioScheduler {
   }
 
   private applyDelayParameters(sourceInfo: any, wetAmount: number, delayTime: number, feedbackAmount: number, stemBPM: number): void {
-    if (!this.audioContext || !sourceInfo.delayWorkletNode) return
+    if (!this.audioContext || !sourceInfo.delayParams) return
 
     // Calculate delay time in seconds with exponential mapping
     // 0-1 maps to 0.1ms-2000ms exponentially for flanger to long delay
@@ -2007,24 +2007,22 @@ class AudioScheduler {
     const delayTimeMs = 0.1 + (exponentialValue * 1999.9) // 0.1ms to 2000ms
     const delayTimeSeconds = delayTimeMs / 1000
 
-    // Apply delay time to the worklet
-    const workletDelayTimeParam = sourceInfo.delayWorkletNode.parameters.get('delayTime')
-    if (workletDelayTimeParam) {
-      workletDelayTimeParam.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+    // Apply delay time to the DelayNode
+    if (sourceInfo.delayParams.delay) {
+      sourceInfo.delayParams.delay.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
     }
 
-    // Apply feedback to the worklet
-    const workletFeedbackParam = sourceInfo.delayWorkletNode.parameters.get('feedback')
-    if (workletFeedbackParam) {
-      // feedbackAmount is 0-1 from slider, worklet expects 0-0.95
-      workletFeedbackParam.setValueAtTime(Math.min(0.95, feedbackAmount), this.audioContext.currentTime)
+    // Apply feedback to the DelayNode
+    if (sourceInfo.delayParams.feedback) {
+      // feedbackAmount is 0-1 from slider, DelayNode expects 0-0.95
+      sourceInfo.delayParams.feedback.setValueAtTime(Math.min(0.95, feedbackAmount), this.audioContext.currentTime)
     }
 
     // Apply wet/dry mix (Dry is always 100%, Wet controls the amount of delayed signal)
     sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
     sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
 
-    console.log(`🔄 AW Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
+    console.log(`🔄 DelayNode: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
   }
 
   // Calculate BPM-synced delay time
@@ -2109,7 +2107,7 @@ class AudioScheduler {
     }, timeToNextBeat * 1000) // Convert to milliseconds
   }
 
-  private applyLoopFractionChange(cellIndex: number, newFraction: number): void {
+  private async applyLoopFractionChange(cellIndex: number, newFraction: number): Promise<void> {
     const sourceInfo = this.activeSources.get(cellIndex)
     if (!sourceInfo || !this.audioContext) return
 
@@ -2126,7 +2124,7 @@ class AudioScheduler {
       setCellParameter(cellIndex, 'loopFraction', newFraction)
 
       // Restart with new loop fraction
-      this.addStem(cellIndex, stem)
+      await this.addStem(cellIndex, stem)
     } else {
       // Just update the parameter if not playing
       setCellParameter(cellIndex, 'loopFraction', newFraction)
@@ -2145,7 +2143,7 @@ class AudioScheduler {
     console.log(`Removed stem: ${sourceInfo.stem.name}`)
   }
 
-  updateActiveStems(activeCells: number[], allCells: StemCell[]): void {
+  async updateActiveStems(activeCells: number[], allCells: StemCell[]): Promise<void> {
     if (!this.isInitialized) return
 
     // Get currently playing stems
@@ -2166,7 +2164,7 @@ class AudioScheduler {
       if (!currentlyPlaying.has(cellIndex)) {
         const stem = allCells[cellIndex].stem
         if (stem && stem.buffer) {
-          this.addStem(cellIndex, stem)
+          await this.addStem(cellIndex, stem)
         }
       }
     }
@@ -2204,7 +2202,7 @@ const audioScheduler = new AudioScheduler()
 
 // Create the looper controller object
 export const looper = {
-  init,
+  init: (): Promise<void> => init(),
 
   // Set the number of grid cells
   setGridCells: (size: number): void => {

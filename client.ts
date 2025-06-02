@@ -2,8 +2,8 @@ import { looper, type Stem } from './looper.ts'
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    looper.init()
+  document.addEventListener('DOMContentLoaded', async () => {
+    await looper.init()
     // Debug: Check if control row exists
     setTimeout(() => {
       const controlRow = document.getElementById('controlRow')
@@ -17,18 +17,21 @@ if (document.readyState === 'loading') {
     }, 1000)
   })
 } else {
-  looper.init()
-  // Debug: Check if control row exists
-  setTimeout(() => {
-    const controlRow = document.getElementById('controlRow')
-    console.log('Control row element:', controlRow)
-    if (controlRow) {
-      console.log('Control row display:', controlRow.style.display)
-      console.log('Control row computed style:', window.getComputedStyle(controlRow).display)
-    } else {
-      console.log('❌ Control row element not found!')
-    }
-  }, 1000)
+  looper.init().then(() => {
+    // Debug: Check if control row exists
+    setTimeout(() => {
+      const controlRow = document.getElementById('controlRow')
+      console.log('Control row element:', controlRow)
+      if (controlRow) {
+        console.log('Control row display:', controlRow.style.display)
+        console.log('Control row computed style:', window.getComputedStyle(controlRow).display)
+      } else {
+        console.log('❌ Control row element not found!')
+      }
+    }, 1000)
+  }).catch(error => {
+    console.error('Error initializing looper:', error)
+  })
 }
 
 // Set up directory callback
@@ -46,7 +49,7 @@ looper.onDirectoryLoaded(async (handle) => {
   looper.updateLoadingStatus(`Reading ${zipFiles.length} ZIP files...`)
 
   const allStemMetadata = []
-  for (const file of zipFiles.slice(0, 1)) {
+  for (const file of zipFiles) {
     console.log(`Reading metadata from ${file.name}...`)
     looper.updateLoadingStatus(`Reading ${file.name}...`)
 

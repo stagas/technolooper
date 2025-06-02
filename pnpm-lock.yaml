@@ -15,12 +15,18 @@ importers:
         specifier: ^3.10.1
         version: 3.10.1
     devDependencies:
+      '@types/audioworklet':
+        specifier: ^0.0.75
+        version: 0.0.75
       '@types/node':
         specifier: ^22.15.29
         version: 22.15.29
       '@types/wicg-file-system-access':
         specifier: ^2023.10.6
         version: 2023.10.6
+      assemblyscript:
+        specifier: ^0.28.1
+        version: 0.28.1
       typescript:
         specifier: ^5.0.0
         version: 5.8.3
@@ -280,6 +286,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@types/audioworklet@0.0.75':
+    resolution: {integrity: sha512-Xb35K9bXy+fUl/moqCgoTuvuLWxd2Tro1ua+2j3JzOBzYb5n5bvBry7OKNrw1imObjKufxV5+ZfZ02xFkqJiXw==}
+
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
@@ -288,6 +297,15 @@ packages:
 
   '@types/wicg-file-system-access@2023.10.6':
     resolution: {integrity: sha512-YO/183gNRzZFSdKu+ikkD7ambAj4PhgjFAF2A/Mw/7wroSF6ne8r804RkpZzqrJ/F6DO2/IYlQF/ULOZ/bhKyA==}
+
+  assemblyscript@0.28.1:
+    resolution: {integrity: sha512-CcoEh+cdNaFY9n2hIoM2989H5BqRprS/1xFNXrXRZyfbUD9i/5IkAiL3EKaN2hORfsIilRTtKGx6ghHaiVpPSQ==}
+    engines: {node: '>=20', npm: '>=10'}
+    hasBin: true
+
+  binaryen@116.0.0-nightly.20240114:
+    resolution: {integrity: sha512-0GZrojJnuhoe+hiwji7QFaL3tBlJoA+KFUN7ouYSDGZLSo9CKM8swQX8n/UcbR0d1VuZKU+nhogNzv423JEu5A==}
+    hasBin: true
 
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
@@ -327,6 +345,9 @@ packages:
 
   lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
+
+  long@5.3.2:
+    resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
 
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
@@ -563,6 +584,8 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.41.1':
     optional: true
 
+  '@types/audioworklet@0.0.75': {}
+
   '@types/estree@1.0.7': {}
 
   '@types/node@22.15.29':
@@ -570,6 +593,13 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/wicg-file-system-access@2023.10.6': {}
+
+  assemblyscript@0.28.1:
+    dependencies:
+      binaryen: 116.0.0-nightly.20240114
+      long: 5.3.2
+
+  binaryen@116.0.0-nightly.20240114: {}
 
   core-util-is@1.0.3: {}
 
@@ -626,6 +656,8 @@ snapshots:
   lie@3.3.0:
     dependencies:
       immediate: 3.0.6
+
+  long@5.3.2: {}
 
   nanoid@3.3.11: {}
 
