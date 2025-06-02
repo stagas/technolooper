@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Technolooper Grid</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -39,6 +39,7 @@
         <!-- Initial Control Buttons -->
         <div id="initialControls" class="control-buttons">
           <button id="controlBtn" class="control-btn">Control</button>
+          <button id="effectBtn" class="control-btn">Effect</button>
           <button id="resetAllBtn" class="control-btn">Reset All</button>
           <button id="returnBtn" class="control-btn return-btn" style="display: none;"></button>
         </div>
@@ -50,6 +51,13 @@
           <button id="filterBtn" class="control-btn">Filter</button>
           <button id="delayBtn" class="control-btn">Delay</button>
           <button id="returnFromCellBtn" class="control-btn return-btn"></button>
+        </div>
+
+        <!-- Master Effects Controls -->
+        <div id="masterEffectsControls" class="control-buttons" style="display: none;">
+          <button id="masterFilterBtn" class="control-btn">Filter</button>
+          <button id="masterDelayBtn" class="control-btn">Delay</button>
+          <button id="returnFromMasterBtn" class="control-btn return-btn"></button>
         </div>
 
         <!-- Parameter Control -->

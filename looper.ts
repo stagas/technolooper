@@ -94,7 +94,7 @@ let onStemsLoadedCallback: ((stems: Stem[]) => void) | null = null
 
 // Control system state
 interface ControlState {
-  mode: 'initial' | 'cellSelection' | 'parameterControl'
+  mode: 'initial' | 'cellSelection' | 'parameterControl' | 'masterEffects'
   controlledCellIndex: number | null
   currentParameter: string | null
   isActive: boolean
@@ -105,6 +105,21 @@ let controlState: ControlState = {
   controlledCellIndex: null,
   currentParameter: null,
   isActive: false
+}
+
+// Master effect parameters
+interface MasterEffectParameters {
+  filter: number // -1 to 1 (negative = low-pass, positive = high-pass, 0 = no filter)
+  delayWet: number // 0 to 1 (wet amount)
+  delayTime: number // 0 to 1 (mapped exponentially to 0.1ms-2000ms)
+  delayFeedback: number // 0 to 0.95 (feedback amount for worklet)
+}
+
+let masterEffectParameters: MasterEffectParameters = {
+  filter: 0, // No filter by default
+  delayWet: 0,
+  delayTime: 0,
+  delayFeedback: 0.3 // Default feedback
 }
 
 // Parameter values for each cell
@@ -1262,6 +1277,18 @@ function setupControlRowEventListeners(): void {
         params.delayFeedback = 0.3
       })
 
+      // Reset master effect parameters to defaults
+      masterEffectParameters.filter = 0
+      masterEffectParameters.delayWet = 0
+      masterEffectParameters.delayTime = 0
+      masterEffectParameters.delayFeedback = 0.3
+
+      // Apply master effect resets to audio if initialized
+      if (audioScheduler.isAudioInitialized()) {
+        audioScheduler.updateMasterFilterParameter(0)
+        audioScheduler.updateMasterDelayParameters(0, 0, 0.3)
+      }
+
       // Release all pooled nodes
       nodePool.releaseAllNodes()
 
@@ -1285,11 +1312,21 @@ function setupControlRowEventListeners(): void {
     })
   }
 
+  // Effect button (for master effects)
+  const effectBtn = document.getElementById('effectBtn')
+  if (effectBtn) {
+    effectBtn.addEventListener('click', () => {
+      console.log('🎛️ Effect button clicked')
+      enterMasterEffectsMode()
+    })
+  }
+
   // Return buttons
   const returnButtons = [
     document.getElementById('returnBtn'),
     document.getElementById('returnFromCellBtn'),
-    document.getElementById('returnFromParamBtn')
+    document.getElementById('returnFromParamBtn'),
+    document.getElementById('returnFromMasterBtn')
   ]
   returnButtons.forEach(btn => {
     if (btn) {
@@ -1399,6 +1436,22 @@ function setupControlRowEventListeners(): void {
   if (delayNavNext) {
     delayNavNext.addEventListener('click', () => {
       navigateDelayPreset('next')
+    })
+  }
+
+  // Master Filter button
+  const masterFilterBtn = document.getElementById('masterFilterBtn')
+  if (masterFilterBtn) {
+    masterFilterBtn.addEventListener('click', () => {
+      enterMasterParameterControl('filter', 'Master Filter', 'Hz')
+    })
+  }
+
+  // Master Delay button
+  const masterDelayBtn = document.getElementById('masterDelayBtn')
+  if (masterDelayBtn) {
+    masterDelayBtn.addEventListener('click', () => {
+      enterMasterParameterControl('delay', 'Master Delay Settings', '')
     })
   }
 }
@@ -1639,6 +1692,29 @@ function updateDelayTimeControl(delayTime: number): void {
 }
 
 function handleDelayTimeChange(sliderValue: number): void {
+  // Handle master effects
+  if (controlState.currentParameter?.startsWith('master_')) {
+    // Convert slider value (0-100) to exponential delay time (0-1)
+    const normalizedValue = sliderValue / 100 // 0-1
+    const exponentialValue = Math.pow(normalizedValue, 3) // Exponential curve
+
+    // Update master effect parameter
+    setMasterEffectParameter('delayTime', exponentialValue)
+
+    // Calculate actual delay time in ms for display
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+
+    // Update display
+    const delayParameterValue = document.getElementById('delayParameterValue')
+    if (delayParameterValue) {
+      delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+    }
+
+    console.log(`🎛️ Master Delay time: slider=${sliderValue}%, exponential=${exponentialValue.toFixed(3)}, ms=${delayTimeMs.toFixed(1)}`)
+    return
+  }
+
+  // Handle individual cell effects
   if (controlState.controlledCellIndex === null) return
 
   // Convert slider value (0-100) to exponential delay time (0-1)
@@ -1662,6 +1738,24 @@ function handleDelayTimeChange(sliderValue: number): void {
 }
 
 function handleDelayWetChange(sliderValue: number): void {
+  // Handle master effects
+  if (controlState.currentParameter?.startsWith('master_')) {
+    const actualValue = sliderValue / 100 // Convert percentage to 0-1
+
+    // Update master effect parameter
+    setMasterEffectParameter('delayWet', actualValue)
+
+    // Update display for delayWetSlider
+    const delayWetParameterValue = document.getElementById('delayWetParameterValue')
+    if (delayWetParameterValue) {
+      delayWetParameterValue.textContent = `${sliderValue}%`
+    }
+
+    console.log(`🎛️ Master Delay wet: ${sliderValue}%`)
+    return
+  }
+
+  // Handle individual cell effects
   if (controlState.controlledCellIndex === null) return
 
   const actualValue = sliderValue / 100 // Convert percentage to 0-1
@@ -1677,6 +1771,26 @@ function handleDelayWetChange(sliderValue: number): void {
 }
 
 function handleDelayFeedbackChange(sliderValue: number): void {
+  // Handle master effects
+  if (controlState.currentParameter?.startsWith('master_')) {
+    // Cap feedback at 90% on slider (0-90 range) to ensure max 0.90 value
+    const cappedSliderValue = Math.min(90, Math.max(0, sliderValue))
+    const actualValue = cappedSliderValue / 100 // Convert percentage to 0-0.90 range
+
+    // Update master effect parameter
+    setMasterEffectParameter('delayFeedback', actualValue)
+
+    // Update display for delayFeedbackSlider
+    const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
+    if (delayFeedbackParameterValue) {
+      delayFeedbackParameterValue.textContent = `${cappedSliderValue}%`
+    }
+
+    console.log(`🎛️ Master Delay feedback: ${cappedSliderValue}%`)
+    return
+  }
+
+  // Handle individual cell effects
   if (controlState.controlledCellIndex === null) return
 
   // Cap feedback at 90% on slider (0-90 range) to ensure max 0.90 value
@@ -1694,6 +1808,42 @@ function handleDelayFeedbackChange(sliderValue: number): void {
 }
 
 function handleParameterChange(sliderValue: number): void {
+  // Handle master effects
+  if (controlState.currentParameter?.startsWith('master_')) {
+    const masterParameter = controlState.currentParameter.replace('master_', '') as keyof MasterEffectParameters
+
+    let actualValue = sliderValue
+    let displayText = ''
+
+    // Convert slider value to actual parameter value
+    if (masterParameter === 'filter') {
+      actualValue = sliderValue / 100 // Convert percentage to -1 to 1
+      if (sliderValue > 0) {
+        displayText = `High-pass ${sliderValue}%`
+      }
+
+      else if (sliderValue < 0) {
+        displayText = `Low-pass ${Math.abs(sliderValue)}%`
+      }
+
+      else {
+        displayText = 'No Filter'
+      }
+    }
+
+    // Update master effect parameter
+    setMasterEffectParameter(masterParameter, actualValue)
+
+    // Update display
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+    if (sliderParameterValue) {
+      sliderParameterValue.textContent = displayText
+    }
+
+    return
+  }
+
+  // Handle individual cell effects
   if (controlState.controlledCellIndex === null || !controlState.currentParameter) return
 
   let actualValue = sliderValue
@@ -1865,17 +2015,25 @@ function returnToInitialControlState(): void {
     console.error('❌ Control button not found when trying to deactivate')
   }
 
+  // Remove active state from effect button
+  const effectBtn = document.getElementById('effectBtn')
+  if (effectBtn) {
+    effectBtn.classList.remove('active')
+  }
+
   console.log(`📊 State after: mode=${controlState.mode}, isActive=${controlState.isActive}`)
-  console.log('Control mode: Reset to initial state')
+  console.log('📝 Returned to initial control state')
 }
 
 function showInitialControls(): void {
   const initialControls = document.getElementById('initialControls')
   const cellSelectedControls = document.getElementById('cellSelectedControls')
+  const masterEffectsControls = document.getElementById('masterEffectsControls')
   const parameterControl = document.getElementById('parameterControl')
 
   if (initialControls) initialControls.style.display = 'flex'
   if (cellSelectedControls) cellSelectedControls.style.display = 'none'
+  if (masterEffectsControls) masterEffectsControls.style.display = 'none'
   if (parameterControl) parameterControl.style.display = 'none'
 
   // Update control availability when returning to initial state
@@ -2044,6 +2202,11 @@ function updateCellWithAudioBuffer(cellIndex: number, audioBuffer: AudioBuffer):
 class AudioScheduler {
   private audioContext: AudioContext | null = null
   private masterGainNode: GainNode | null = null
+  private masterFilterNode: BiquadFilterNode | null = null
+  private masterDelayNode: AudioWorkletNode | null = null
+  private masterDelayParams: { delay: AudioParam | undefined; feedback: AudioParam | undefined } = { delay: undefined, feedback: undefined }
+  private masterDelayWetNode: GainNode | null = null
+  private masterDelayDryNode: GainNode | null = null
   private isDelayReady = false // Track if delay worklet is registered
   private isPlaying = false
   private startTime = 0
@@ -2070,7 +2233,23 @@ class AudioScheduler {
     try {
       this.audioContext = new AudioContext()
       this.masterGainNode = this.audioContext.createGain()
-      this.masterGainNode.connect(this.audioContext.destination)
+
+      // Create master effect nodes
+      this.masterFilterNode = this.audioContext.createBiquadFilter()
+      this.masterFilterNode.type = 'allpass' // Start with no filter
+
+      // Create master delay nodes
+      this.masterDelayWetNode = this.audioContext.createGain()
+      this.masterDelayDryNode = this.audioContext.createGain()
+      this.masterDelayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start with no delay wet
+      this.masterDelayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry by default
+
+      // Set up master audio chain: masterGain -> masterFilter -> delay chain -> destination
+      this.masterGainNode.connect(this.masterFilterNode)
+
+      // Connect to both dry and delay paths
+      this.masterFilterNode.connect(this.masterDelayDryNode)
+      this.masterDelayDryNode.connect(this.audioContext.destination)
 
       // Resume context if suspended
       if (this.audioContext.state === 'suspended') {
@@ -2084,6 +2263,19 @@ class AudioScheduler {
       // Disconnect the test delay node as we just needed it for worklet registration
       testDelay.node.disconnect()
       console.log('DelayNode worklet ready')
+
+      // Create master delay node after worklet is ready
+      const masterDelay = await Delay(this.audioContext)
+      this.masterDelayNode = masterDelay.node
+      this.masterDelayParams = {
+        delay: masterDelay.delay,
+        feedback: masterDelay.feedback
+      }
+
+      // Connect master delay to wet path
+      this.masterFilterNode.connect(this.masterDelayNode)
+      this.masterDelayNode.connect(this.masterDelayWetNode)
+      this.masterDelayWetNode.connect(this.audioContext.destination)
 
       // Initialize node pools
       await nodePool.initialize(this.audioContext)
@@ -2538,6 +2730,56 @@ class AudioScheduler {
     if (this.masterGainNode) {
       this.masterGainNode.gain.setValueAtTime(volume, this.audioContext?.currentTime || 0)
     }
+  }
+
+  updateMasterFilterParameter(filterValue: number): void {
+    if (!this.audioContext || !this.masterFilterNode) return
+
+    if (filterValue === 0) {
+      // No filter - use allpass which doesn't affect the signal
+      this.masterFilterNode.type = 'allpass'
+    }
+
+    else if (filterValue > 0) {
+      // High-pass filter for positive values
+      this.masterFilterNode.type = 'highpass'
+      const exponentialValue = Math.pow(filterValue, 1)
+      const frequency = 20 * Math.pow(8000 / 20, exponentialValue)
+      this.masterFilterNode.frequency.setValueAtTime(frequency, this.audioContext.currentTime)
+      this.masterFilterNode.Q.setValueAtTime(3, this.audioContext.currentTime)
+    }
+
+    else {
+      // Low-pass filter for negative values
+      this.masterFilterNode.type = 'lowpass'
+      const absValue = Math.abs(filterValue)
+      const exponentialValue = Math.pow(absValue, 3.5)
+      const frequency = 8000 * Math.pow(20 / 8000, exponentialValue)
+      this.masterFilterNode.frequency.setValueAtTime(frequency, this.audioContext.currentTime)
+      this.masterFilterNode.Q.setValueAtTime(3, this.audioContext.currentTime)
+    }
+  }
+
+  updateMasterDelayParameters(wetAmount: number, delayTime: number, feedbackAmount: number): void {
+    if (!this.audioContext || !this.masterDelayParams.delay || !this.masterDelayParams.feedback ||
+      !this.masterDelayWetNode || !this.masterDelayDryNode) return
+
+    // Calculate delay time in seconds with exponential mapping
+    const exponentialValue = Math.pow(delayTime, 3)
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+    const delayTimeSeconds = delayTimeMs / 1000
+
+    // Apply delay time
+    this.masterDelayParams.delay.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+
+    // Apply feedback (capped at 0.95)
+    this.masterDelayParams.feedback.setValueAtTime(Math.min(0.95, feedbackAmount), this.audioContext.currentTime)
+
+    // Apply wet/dry mix
+    this.masterDelayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
+    this.masterDelayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
+
+    console.log(`🎛️ Master Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
   }
 
   isAudioInitialized(): boolean {
@@ -3166,4 +3408,139 @@ function navigateDelayPreset(direction: 'prev' | 'next'): void {
   }
 
   console.log(`Delay preset: ${preset.name} (${currentDelayPresetIndex + 1}/${delayPresets.length})`)
+}
+
+// Master effect parameter functions
+function setMasterEffectParameter(parameter: keyof MasterEffectParameters, value: number): void {
+  // Apply safety caps for specific parameters
+  if (parameter === 'delayFeedback') {
+    value = Math.min(0.90, Math.max(0, value))
+  }
+
+  else if (parameter === 'delayWet') {
+    value = Math.min(1, Math.max(0, value))
+  }
+
+  masterEffectParameters[parameter] = value
+
+  // Update audio
+  if (audioScheduler.isAudioInitialized()) {
+    if (parameter === 'filter') {
+      audioScheduler.updateMasterFilterParameter(value)
+    }
+
+    else if (parameter === 'delayWet' || parameter === 'delayTime' || parameter === 'delayFeedback') {
+      audioScheduler.updateMasterDelayParameters(
+        masterEffectParameters.delayWet,
+        masterEffectParameters.delayTime,
+        masterEffectParameters.delayFeedback
+      )
+    }
+  }
+}
+
+// Master effects mode functions
+function enterMasterEffectsMode(): void {
+  console.log('🎛️ Entering master effects mode')
+
+  controlState.mode = 'masterEffects'
+  controlState.isActive = true
+  controlState.controlledCellIndex = null
+  controlState.currentParameter = null
+
+  // Hide other control panels
+  const initialControls = document.getElementById('initialControls')
+  const cellSelectedControls = document.getElementById('cellSelectedControls')
+  const parameterControl = document.getElementById('parameterControl')
+  const masterEffectsControls = document.getElementById('masterEffectsControls')
+
+  if (initialControls) initialControls.style.display = 'none'
+  if (cellSelectedControls) cellSelectedControls.style.display = 'none'
+  if (parameterControl) parameterControl.style.display = 'none'
+  if (masterEffectsControls) masterEffectsControls.style.display = 'flex'
+
+  // Update button visual state
+  const effectBtn = document.getElementById('effectBtn')
+  if (effectBtn) effectBtn.classList.add('active')
+}
+
+function enterMasterParameterControl(parameter: string, label: string, unit: string): void {
+  console.log(`🎛️ Entering master parameter control: ${parameter}`)
+
+  controlState.mode = 'parameterControl'
+  controlState.currentParameter = 'master_' + parameter
+
+  // Hide master effects controls, show parameter control
+  const masterEffectsControls = document.getElementById('masterEffectsControls')
+  const parameterControl = document.getElementById('parameterControl')
+
+  if (masterEffectsControls) masterEffectsControls.style.display = 'none'
+  if (parameterControl) parameterControl.style.display = 'flex'
+
+  // Hide all parameter control sub-panels first
+  const loopFractionControl = document.getElementById('loopFractionControl')
+  const sliderControl = document.getElementById('sliderControl')
+  const delaySettingsControl = document.getElementById('delaySettingsControl')
+
+  if (loopFractionControl) loopFractionControl.style.display = 'none'
+  if (sliderControl) sliderControl.style.display = 'none'
+  if (delaySettingsControl) delaySettingsControl.style.display = 'none'
+
+  if (parameter === 'delay') {
+    // Show delay settings control for master delay
+    if (delaySettingsControl) delaySettingsControl.style.display = 'flex'
+
+    // Setup master delay controls
+    const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
+    const delayWetParameterValue = document.getElementById('delayWetParameterValue')
+    if (delayWetSlider && delayWetParameterValue) {
+      const currentDelayWet = Math.round(masterEffectParameters.delayWet * 100)
+      delayWetSlider.value = currentDelayWet.toString()
+      delayWetParameterValue.textContent = `${currentDelayWet}%`
+    }
+
+    updateDelayTimeControl(masterEffectParameters.delayTime)
+
+    const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
+    const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
+    if (delayFeedbackSlider && delayFeedbackParameterValue) {
+      const currentDelayFeedback = Math.round(masterEffectParameters.delayFeedback * 100)
+      delayFeedbackSlider.value = currentDelayFeedback.toString()
+      delayFeedbackParameterValue.textContent = `${currentDelayFeedback}%`
+    }
+  }
+
+  else {
+    // Generic slider case (filter)
+    if (sliderControl) sliderControl.style.display = 'flex'
+
+    const sliderParameterLabel = document.getElementById('sliderParameterLabel')
+    if (sliderParameterLabel) sliderParameterLabel.textContent = label
+
+    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+
+    if (parameterSlider && sliderParameterValue) {
+      let currentValue = masterEffectParameters[parameter as keyof MasterEffectParameters]
+
+      if (parameter === 'filter') {
+        parameterSlider.min = '-100'
+        parameterSlider.max = '100'
+        currentValue = Math.round(currentValue * 100)
+        parameterSlider.value = currentValue.toString()
+
+        if (currentValue > 0) {
+          sliderParameterValue.textContent = `High-pass ${currentValue}%`
+        }
+
+        else if (currentValue < 0) {
+          sliderParameterValue.textContent = `Low-pass ${Math.abs(currentValue)}%`
+        }
+
+        else {
+          sliderParameterValue.textContent = 'No Filter'
+        }
+      }
+    }
+  }
 }
