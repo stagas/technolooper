@@ -1,10 +1,12 @@
 import { Delay } from './delay-node.ts'
-import type { PooledDelayNode, PooledFilterNode } from './types.ts'
+import { Pitch } from './pitch-node.ts'
+import type { PooledDelayNode, PooledFilterNode, PooledPitchNode } from './types.ts'
 
 // Audio Node Pools System
 export class NodePool {
   private delayPool: PooledDelayNode[] = []
   private filterPool: PooledFilterNode[] = []
+  private pitchPool: PooledPitchNode[] = []
   private audioContext: AudioContext | null = null
 
   async initialize(audioContext: AudioContext): Promise<void> {
@@ -42,7 +44,19 @@ export class NodePool {
       })
     }
 
-    console.log('Node pools initialized: 8 delay nodes, 8 filter nodes')
+    // Initialize pitch pool (8 nodes)
+    for (let i = 0; i < 8; i++) {
+      const pitchResult = await Pitch(audioContext)
+
+      this.pitchPool.push({
+        pitchNode: pitchResult.node,
+        pitchRatio: pitchResult.pitchRatio,
+        isAvailable: true,
+        assignedCellIndex: null
+      })
+    }
+
+    console.log('Node pools initialized: 8 delay nodes, 8 filter nodes, 8 pitch nodes')
   }
 
   assignDelayNode(cellIndex: number): PooledDelayNode | null {
@@ -57,6 +71,16 @@ export class NodePool {
 
   assignFilterNode(cellIndex: number): PooledFilterNode | null {
     const availableNode = this.filterPool.find(node => node.isAvailable)
+    if (availableNode) {
+      availableNode.isAvailable = false
+      availableNode.assignedCellIndex = cellIndex
+      return availableNode
+    }
+    return null
+  }
+
+  assignPitchNode(cellIndex: number): PooledPitchNode | null {
+    const availableNode = this.pitchPool.find(node => node.isAvailable)
     if (availableNode) {
       availableNode.isAvailable = false
       availableNode.assignedCellIndex = cellIndex
@@ -103,6 +127,22 @@ export class NodePool {
     }
   }
 
+  releasePitchNode(cellIndex: number): void {
+    const node = this.pitchPool.find(node => node.assignedCellIndex === cellIndex)
+    if (node && this.audioContext) {
+      // Reset pitch parameters
+      if (node.pitchRatio) {
+        node.pitchRatio.setValueAtTime(1, this.audioContext.currentTime) // Reset to no pitch shift
+      }
+
+      // Disconnect all connections
+      node.pitchNode.disconnect()
+
+      node.isAvailable = true
+      node.assignedCellIndex = null
+    }
+  }
+
   releaseAllNodes(): number[] {
     // Track cells that need to be restarted
     const cellsToRestart: number[] = []
@@ -125,6 +165,16 @@ export class NodePool {
       }
     })
 
+    // Release all pitch nodes and track affected cells
+    this.pitchPool.forEach((node) => {
+      if (!node.isAvailable && node.assignedCellIndex !== null) {
+        if (!cellsToRestart.includes(node.assignedCellIndex)) {
+          cellsToRestart.push(node.assignedCellIndex)
+        }
+        this.releasePitchNode(node.assignedCellIndex)
+      }
+    })
+
     console.log(`All pool nodes released and ${cellsToRestart.length} stems reconnected`)
     return cellsToRestart
   }
@@ -137,12 +187,20 @@ export class NodePool {
     return this.filterPool.filter(node => node.isAvailable).length
   }
 
+  getAvailablePitchCount(): number {
+    return this.pitchPool.filter(node => node.isAvailable).length
+  }
+
   getAssignedDelayNode(cellIndex: number): PooledDelayNode | null {
     return this.delayPool.find(node => node.assignedCellIndex === cellIndex) || null
   }
 
   getAssignedFilterNode(cellIndex: number): PooledFilterNode | null {
     return this.filterPool.find(node => node.assignedCellIndex === cellIndex) || null
+  }
+
+  getAssignedPitchNode(cellIndex: number): PooledPitchNode | null {
+    return this.pitchPool.find(node => node.assignedCellIndex === cellIndex) || null
   }
 
   getDelayNodeIndex(cellIndex: number): number {
@@ -152,6 +210,11 @@ export class NodePool {
 
   getFilterNodeIndex(cellIndex: number): number {
     const nodeIndex = this.filterPool.findIndex(node => node.assignedCellIndex === cellIndex)
+    return nodeIndex >= 0 ? nodeIndex + 1 : -1 // Return 1-based index for display
+  }
+
+  getPitchNodeIndex(cellIndex: number): number {
+    const nodeIndex = this.pitchPool.findIndex(node => node.assignedCellIndex === cellIndex)
     return nodeIndex >= 0 ? nodeIndex + 1 : -1 // Return 1-based index for display
   }
 }

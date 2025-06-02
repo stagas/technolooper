@@ -68,7 +68,8 @@ function initializeCellParameters(cellIndex: number): void {
       filter: 0, // No filter by default
       delayWet: 0,
       delayTime: 0,
-      delayFeedback: 0.3 // Default feedback, matches worklet default pre-control
+      delayFeedback: 0.3, // Default feedback, matches worklet default pre-control
+      pitchRatio: 1 // Normal pitch by default
     })
   }
 }
@@ -92,6 +93,8 @@ function setCellParameter(cellIndex: number, parameter: keyof CellParameters, va
     value = Math.min(1, Math.max(0, value)) // Cap volume at 1.0
   } else if (parameter === 'delayWet') {
     value = Math.min(1, Math.max(0, value)) // Cap wet at 1.0
+  } else if (parameter === 'pitchRatio') {
+    value = Math.min(4, Math.max(0.25, value)) // Cap pitch ratio between 0.25x and 4x
   }
 
   params[parameter] = value
@@ -134,11 +137,31 @@ function setCellParameter(cellIndex: number, parameter: keyof CellParameters, va
     }
   }
 
+  // Handle pooled node assignment/release for pitch
+  if (parameter === 'pitchRatio') {
+    if (Math.abs(oldValue - 1) > 0.001 && Math.abs(value - 1) <= 0.001) {
+      // Stopping pitch use - release the node (when returning very close to 1.0)
+      nodePool.releasePitchNode(cellIndex)
+    }
+
+    else if (Math.abs(oldValue - 1) <= 0.001 && Math.abs(value - 1) > 0.001) {
+      // Starting to use pitch - try to assign a node (when moving away from 1.0)
+      const assignedNode = nodePool.assignPitchNode(cellIndex)
+      if (!assignedNode) {
+        // No nodes available, reset parameter
+        params[parameter] = 1
+        console.warn(`No pitch nodes available for cell ${cellIndex}`)
+        return
+      }
+    }
+  }
+
   // Update audio if this cell is currently playing
   if (audioScheduler.isAudioInitialized() && gridCells[cellIndex]?.isActive) {
-    // If we're changing delay/filter and need to restart with new nodes
+    // If we're changing delay/filter/pitch and need to restart with new nodes
     if ((parameter === 'delayWet' && ((oldValue === 0) !== (value === 0))) ||
-      (parameter === 'filter' && ((oldValue === 0) !== (value === 0)))) {
+      (parameter === 'filter' && ((oldValue === 0) !== (value === 0))) ||
+      (parameter === 'pitchRatio' && ((Math.abs(oldValue - 1) <= 0.001) !== (Math.abs(value - 1) <= 0.001)))) {
       // Restart the stem to reconnect with new pooled nodes
       const stem = gridCells[cellIndex].stem
       if (stem) {
@@ -156,7 +179,7 @@ function setCellParameter(cellIndex: number, parameter: keyof CellParameters, va
   updateCellVisual(cellIndex, getCellParameters, nodePool)
 
   // Update controls availability when pool state changes
-  if (parameter === 'delayWet' || parameter === 'filter') {
+  if (parameter === 'delayWet' || parameter === 'filter' || parameter === 'pitchRatio') {
     updateControlsAvailability()
   }
 }
@@ -253,6 +276,10 @@ function toggleCell(index: number): void {
       if (params.filter !== 0) {
         nodePool.releaseFilterNode(index)
         params.filter = 0
+      }
+      if (Math.abs(params.pitchRatio - 1) > 0.001) {
+        nodePool.releasePitchNode(index)
+        params.pitchRatio = 1
       }
       updateControlsAvailability()
     }

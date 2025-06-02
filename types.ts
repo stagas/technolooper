@@ -61,6 +61,7 @@ export interface MasterEffectParameters {
   delayWet: number // 0 to 1 (wet amount)
   delayTime: number // 0 to 1 (mapped exponentially to 0.1ms-2000ms)
   delayFeedback: number // 0 to 0.95 (feedback amount for worklet)
+  pitchRatio: number // 0.25 to 4 (pitch shift ratio, 1 = no shift)
 }
 
 // Parameter values for each cell
@@ -71,6 +72,7 @@ export interface CellParameters {
   delayWet: number // 0 to 1 (wet amount)
   delayTime: number // 0 to 1 (mapped exponentially to 0.1ms-2000ms)
   delayFeedback: number // 0 to 0.95 (feedback amount for worklet)
+  pitchRatio: number // 0.25 to 4 (pitch shift ratio, 1 = no shift)
 }
 
 export interface PooledDelayNode {
@@ -94,4 +96,16 @@ export interface DelayPreset {
   feedback: number // 0-0.95
   time: number // 0-1 (exponential mapped)
   syncFraction?: number // Optional BPM sync fraction
+}
+
+export interface PitchPreset {
+  name: string
+  ratio: number // Pitch ratio (0.25 to 4)
+}
+
+export interface PooledPitchNode {
+  pitchNode: AudioWorkletNode
+  pitchRatio: AudioParam | undefined
+  isAvailable: boolean
+  assignedCellIndex: number | null
 }

@@ -1,4 +1,5 @@
 import { Delay } from './delay-node.ts'
+import { Pitch } from './pitch-node.ts'
 import type { Stem, StemCell, CellParameters } from './types.ts'
 import { NodePool } from './node-pool.ts'
 
@@ -11,7 +12,10 @@ export class AudioScheduler {
   private masterDelayParams: { delay: AudioParam | undefined; feedback: AudioParam | undefined } = { delay: undefined, feedback: undefined }
   private masterDelayWetNode: GainNode | null = null
   private masterDelayDryNode: GainNode | null = null
+  private masterPitchNode: AudioWorkletNode | null = null
+  private masterPitchRatio: AudioParam | undefined = undefined
   private isDelayReady = false // Track if delay worklet is registered
+  private isPitchReady = false // Track if pitch worklet is registered
   private isPlaying = false
   private startTime = 0
   private activeSources: Map<number, {
@@ -22,6 +26,8 @@ export class AudioScheduler {
     delayParams: { delay: AudioParam | undefined; feedback: AudioParam | undefined } // Delay parameters
     delayWetNode: GainNode
     delayDryNode: GainNode
+    pitchNode: AudioWorkletNode // PitchNode instance
+    pitchRatio: AudioParam | undefined // Pitch ratio parameter
     stem: Stem
     currentLoopFraction: number
   }> = new Map()
@@ -53,13 +59,6 @@ export class AudioScheduler {
       this.masterDelayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start with no delay wet
       this.masterDelayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry by default
 
-      // Set up master audio chain: masterGain -> masterFilter -> delay chain -> destination
-      this.masterGainNode.connect(this.masterFilterNode)
-
-      // Connect to both dry and delay paths
-      this.masterFilterNode.connect(this.masterDelayDryNode)
-      this.masterDelayDryNode.connect(this.audioContext.destination)
-
       // Resume context if suspended
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume()
@@ -73,6 +72,14 @@ export class AudioScheduler {
       testDelay.node.disconnect()
       console.log('DelayNode worklet ready')
 
+      // Initialize PitchNode worklet registration once
+      console.log('Initializing PitchNode worklet...')
+      const testPitch = await Pitch(this.audioContext)
+      this.isPitchReady = true
+      // Disconnect the test pitch node as we just needed it for worklet registration
+      testPitch.node.disconnect()
+      console.log('PitchNode worklet ready')
+
       // Create master delay node after worklet is ready
       const masterDelay = await Delay(this.audioContext)
       this.masterDelayNode = masterDelay.node
@@ -81,13 +88,29 @@ export class AudioScheduler {
         feedback: masterDelay.feedback
       }
 
+      // Create master pitch node after worklet is ready
+      const masterPitch = await Pitch(this.audioContext)
+      this.masterPitchNode = masterPitch.node
+      this.masterPitchRatio = masterPitch.pitchRatio
+
+      // Set up master audio chain: masterGain -> masterFilter -> masterPitch -> delay chain -> destination
+      this.masterGainNode.connect(this.masterFilterNode)
+      this.masterFilterNode.connect(this.masterPitchNode)
+
+      // Connect to both dry and delay paths
+      this.masterPitchNode.connect(this.masterDelayDryNode)
+      this.masterDelayDryNode.connect(this.audioContext.destination)
+
       // Connect master delay to wet path
-      this.masterFilterNode.connect(this.masterDelayNode)
+      this.masterPitchNode.connect(this.masterDelayNode)
       this.masterDelayNode.connect(this.masterDelayWetNode)
       this.masterDelayWetNode.connect(this.audioContext.destination)
 
       // Initialize node pools
       await this.nodePool.initialize(this.audioContext)
+
+      // Initialize master pitch to bypass mode (ratio 1.0)
+      this.updateMasterPitchParameter(1.0)
 
       this.updateBarDuration()
       this.isInitialized = true
@@ -206,12 +229,13 @@ export class AudioScheduler {
       const gainNode = this.audioContext.createGain()
       gainNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start silent
 
-      // Get cell parameters to check if we need delay/filter
+      // Get cell parameters to check if we need delay/filter/pitch
       const params = getCellParameters(cellIndex)
 
       // Try to get pooled nodes if they're needed
       let pooledDelayNode = null
       let pooledFilterNode = null
+      let pooledPitchNode = null
 
       if (params.delayWet > 0) {
         pooledDelayNode = this.nodePool.assignDelayNode(cellIndex)
@@ -227,14 +251,33 @@ export class AudioScheduler {
         }
       }
 
+      if (Math.abs(params.pitchRatio - 1) > 0.001) {
+        pooledPitchNode = this.nodePool.assignPitchNode(cellIndex)
+        if (!pooledPitchNode) {
+          console.warn(`No available pitch nodes for cell ${cellIndex}`)
+        }
+      }
+
       // Set up audio chain
       let audioChainEnd: AudioNode = source
 
+      // Add pitch if available
+      if (pooledPitchNode) {
+        audioChainEnd.connect(pooledPitchNode.pitchNode)
+        audioChainEnd = pooledPitchNode.pitchNode
+      }
+
+      // Add filter if available
+      if (pooledFilterNode) {
+        audioChainEnd.connect(pooledFilterNode.filterNode)
+        audioChainEnd = pooledFilterNode.filterNode
+      }
+
       // Add delay if available
       if (pooledDelayNode) {
-        // Connect source to both dry and delay paths
-        source.connect(pooledDelayNode.delayDryNode)
-        source.connect(pooledDelayNode.delayNode)
+        // Connect chain end to both dry and delay paths
+        audioChainEnd.connect(pooledDelayNode.delayDryNode)
+        audioChainEnd.connect(pooledDelayNode.delayNode)
         pooledDelayNode.delayNode.connect(pooledDelayNode.delayWetNode)
 
         // Create a mixer for wet/dry signals
@@ -243,12 +286,6 @@ export class AudioScheduler {
         pooledDelayNode.delayWetNode.connect(mixerNode)
 
         audioChainEnd = mixerNode
-      }
-
-      // Add filter if available
-      if (pooledFilterNode) {
-        audioChainEnd.connect(pooledFilterNode.filterNode)
-        audioChainEnd = pooledFilterNode.filterNode
       }
 
       // Connect final output to gain node
@@ -264,6 +301,8 @@ export class AudioScheduler {
         delayParams: pooledDelayNode?.delayParams || { delay: undefined, feedback: undefined },
         delayWetNode: pooledDelayNode?.delayWetNode || this.audioContext.createGain(),
         delayDryNode: pooledDelayNode?.delayDryNode || this.audioContext.createGain(),
+        pitchNode: pooledPitchNode?.pitchNode || null as any, // Will be null if no pooled node
+        pitchRatio: pooledPitchNode?.pitchRatio || undefined,
         stem,
         currentLoopFraction: 1
       })
@@ -327,6 +366,9 @@ export class AudioScheduler {
 
     // Apply delay settings
     this.applyDelayParameters(sourceInfo, params.delayWet, params.delayTime, params.delayFeedback, sourceInfo.stem.bpm)
+
+    // Apply pitch settings
+    this.applyPitchParameter(sourceInfo, params.pitchRatio)
   }
 
   private applyFilterParameter(filterNode: BiquadFilterNode, filterValue: number): void {
@@ -383,6 +425,15 @@ export class AudioScheduler {
     console.log(`🔄 DelayNode: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
   }
 
+  private applyPitchParameter(sourceInfo: any, pitchRatio: number): void {
+    if (!this.audioContext || !sourceInfo.pitchRatio) return
+
+    // Apply pitch ratio directly to the PitchNode
+    sourceInfo.pitchRatio.setValueAtTime(pitchRatio, this.audioContext.currentTime)
+
+    console.log(`🎵 Pitch ratio: ${pitchRatio.toFixed(2)}x`)
+  }
+
   // Calculate BPM-synced delay time
   calculateBPMDelayTime(fraction: number, bpm: number): number {
     // Calculate note duration in milliseconds
@@ -437,6 +488,10 @@ export class AudioScheduler {
         const fbParams = getCellParameters(cellIndex)
         this.applyDelayParameters(sourceInfo, fbParams.delayWet, fbParams.delayTime, value, sourceInfo.stem.bpm)
         break
+      case 'pitchRatio':
+        // Apply pitch ratio immediately
+        this.applyPitchParameter(sourceInfo, value)
+        break
     }
   }
 
@@ -487,6 +542,7 @@ export class AudioScheduler {
     // Release pooled nodes
     this.nodePool.releaseDelayNode(cellIndex)
     this.nodePool.releaseFilterNode(cellIndex)
+    this.nodePool.releasePitchNode(cellIndex)
 
     console.log(`Removed stem: ${sourceInfo.stem.name}`)
   }
@@ -572,6 +628,55 @@ export class AudioScheduler {
     this.masterDelayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
 
     console.log(`🎛️ Master Delay: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
+  }
+
+  updateMasterPitchParameter(pitchRatio: number): void {
+    if (!this.audioContext || !this.masterFilterNode || !this.masterDelayDryNode || !this.masterDelayNode || !this.masterDelayWetNode) return
+
+    // Check if we should bypass the pitch node entirely
+    if (Math.abs(pitchRatio - 1.0) < 0.001) {
+      // Bypass mode - reconnect audio chain without pitch node
+      if (this.masterPitchNode) {
+        // Disconnect current chain
+        this.masterFilterNode.disconnect()
+        this.masterPitchNode.disconnect()
+        this.masterDelayDryNode.disconnect()
+        this.masterDelayNode.disconnect()
+        this.masterDelayWetNode.disconnect()
+
+        // Reconnect without pitch: filter -> delay paths -> destination
+        this.masterFilterNode.connect(this.masterDelayDryNode)
+        this.masterFilterNode.connect(this.masterDelayNode)
+        this.masterDelayDryNode.connect(this.audioContext.destination)
+        this.masterDelayNode.connect(this.masterDelayWetNode)
+        this.masterDelayWetNode.connect(this.audioContext.destination)
+
+        console.log(`🎛️ Master Pitch bypassed (ratio ~1.0)`)
+      }
+      return
+    }
+
+    // Active pitch mode - ensure pitch node is in chain
+    if (this.masterPitchNode && this.masterPitchRatio) {
+      // Disconnect current chain
+      this.masterFilterNode.disconnect()
+      this.masterPitchNode.disconnect()
+      this.masterDelayDryNode.disconnect()
+      this.masterDelayNode.disconnect()
+      this.masterDelayWetNode.disconnect()
+
+      // Reconnect with pitch: filter -> pitch -> delay paths -> destination
+      this.masterFilterNode.connect(this.masterPitchNode)
+      this.masterPitchNode.connect(this.masterDelayDryNode)
+      this.masterPitchNode.connect(this.masterDelayNode)
+      this.masterDelayDryNode.connect(this.audioContext.destination)
+      this.masterDelayNode.connect(this.masterDelayWetNode)
+      this.masterDelayWetNode.connect(this.audioContext.destination)
+
+      // Apply the pitch ratio
+      this.masterPitchRatio.setValueAtTime(pitchRatio, this.audioContext.currentTime)
+      console.log(`🎛️ Master Pitch ratio: ${pitchRatio.toFixed(2)}x`)
+    }
   }
 
   isAudioInitialized(): boolean {

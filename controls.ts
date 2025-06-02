@@ -14,7 +14,8 @@ let masterEffectParameters: MasterEffectParameters = {
   filter: 0, // No filter by default
   delayWet: 0,
   delayTime: 0,
-  delayFeedback: 0.3 // Default feedback
+  delayFeedback: 0.3, // Default feedback
+  pitchRatio: 1 // No pitch shift by default
 }
 
 let currentDelayPresetIndex = 0
@@ -27,7 +28,8 @@ let getCellParameters: (index: number) => CellParameters = () => ({
   filter: 0,
   delayWet: 0,
   delayTime: 0,
-  delayFeedback: 0.3
+  delayFeedback: 0.3,
+  pitchRatio: 1
 })
 let setCellParameter: (index: number, param: keyof CellParameters, value: number) => void = () => { }
 let getNodePool: () => any = () => null
@@ -99,11 +101,13 @@ export function setupControlRowEventListeners(): void {
       masterEffectParameters.delayWet = 0
       masterEffectParameters.delayTime = 0
       masterEffectParameters.delayFeedback = 0.3
+      masterEffectParameters.pitchRatio = 1
 
       // Apply master effect resets to audio if initialized
       if (audioScheduler.isAudioInitialized()) {
         audioScheduler.updateMasterFilterParameter(0)
         audioScheduler.updateMasterDelayParameters(0, 0, 0.3)
+        audioScheduler.updateMasterPitchParameter(1)
       }
 
       // Reset all cell parameters that use delay/filter
@@ -112,7 +116,7 @@ export function setupControlRowEventListeners(): void {
         let needsRestart = false
 
         // Check if cell has any non-default parameters that require pooled nodes
-        if (params.delayWet > 0 || params.filter !== 0) {
+        if (params.delayWet > 0 || params.filter !== 0 || Math.abs(params.pitchRatio - 1) > 0.001) {
           needsRestart = true
         }
 
@@ -123,6 +127,7 @@ export function setupControlRowEventListeners(): void {
         setCellParameter(cellIndex, 'delayWet', 0)
         setCellParameter(cellIndex, 'delayTime', 0)
         setCellParameter(cellIndex, 'delayFeedback', 0.3)
+        setCellParameter(cellIndex, 'pitchRatio', 1)
 
         if (needsRestart) {
           cellsToRestart.push(cellIndex)
@@ -216,6 +221,26 @@ export function setupControlRowEventListeners(): void {
     })
   }
 
+  // Pitch button
+  const pitchBtn = document.getElementById('pitchBtn')
+  if (pitchBtn) {
+    pitchBtn.addEventListener('click', () => {
+      const nodePool = getNodePool()
+      if (nodePool.getAvailablePitchCount() > 0) {
+        enterParameterControl('pitch', 'Pitch Shift', 'x')
+      }
+
+      else {
+        console.warn('No pitch nodes available')
+        // Visual feedback - briefly flash the button
+        pitchBtn.style.backgroundColor = '#ff6b6b'
+        setTimeout(() => {
+          pitchBtn.style.backgroundColor = ''
+        }, 200)
+      }
+    })
+  }
+
   // Consolidated Delay button
   const delayBtn = document.getElementById('delayBtn')
   if (delayBtn) {
@@ -300,6 +325,14 @@ export function setupControlRowEventListeners(): void {
   if (masterDelayBtn) {
     masterDelayBtn.addEventListener('click', () => {
       enterMasterParameterControl('delay', 'Master Delay Settings', '')
+    })
+  }
+
+  // Master Pitch button
+  const masterPitchBtn = document.getElementById('masterPitchBtn')
+  if (masterPitchBtn) {
+    masterPitchBtn.addEventListener('click', () => {
+      enterMasterParameterControl('pitch', 'Master Pitch Shift', 'x')
     })
   }
 }
@@ -428,6 +461,7 @@ export function updateControlsAvailability(): void {
   const nodePool = getNodePool()
   const filterBtn = document.getElementById('filterBtn')
   const delayBtn = document.getElementById('delayBtn')
+  const pitchBtn = document.getElementById('pitchBtn')
 
   if (filterBtn && nodePool) {
     const filterAvailable = nodePool.getAvailableFilterCount() > 0
@@ -441,6 +475,13 @@ export function updateControlsAvailability(): void {
     delayBtn.style.opacity = delayAvailable ? '1' : '0.3'
     delayBtn.style.pointerEvents = delayAvailable ? 'auto' : 'none'
     delayBtn.title = delayAvailable ? '' : `No delay nodes available (${nodePool.getAvailableDelayCount()}/8)`
+  }
+
+  if (pitchBtn && nodePool) {
+    const pitchAvailable = nodePool.getAvailablePitchCount() > 0
+    pitchBtn.style.opacity = pitchAvailable ? '1' : '0.3'
+    pitchBtn.style.pointerEvents = pitchAvailable ? 'auto' : 'none'
+    pitchBtn.title = pitchAvailable ? '' : `No pitch nodes available (${nodePool.getAvailablePitchCount()}/8)`
   }
 }
 
@@ -509,8 +550,44 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
       delayFeedbackParameterValue.textContent = `${currentDelayFeedback}%`
     }
 
+  } else if (parameter === 'pitch') {
+    // Pitch uses generic slider control like filter
+    if (sliderControl) sliderControl.style.display = 'flex'
+    controlState.currentParameter = 'pitch'
+
+    const sliderParameterLabel = document.getElementById('sliderParameterLabel')
+    if (sliderParameterLabel) sliderParameterLabel.textContent = label
+
+    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+
+    if (parameterSlider && sliderParameterValue) {
+      const cellParams = getCellParameters(controlState.controlledCellIndex)
+      let currentValue = cellParams.pitchRatio
+
+      parameterSlider.min = '-100'
+      parameterSlider.max = '100'
+      // Map pitch ratio (0.25-4) to slider (-100 to 100)
+      // 1.0 = 0, 0.25 = -100, 4.0 = 100
+      if (currentValue <= 1) {
+        // Map 0.25-1.0 to -100-0
+        currentValue = ((currentValue - 0.25) / (1 - 0.25)) * 100 - 100
+      } else {
+        // Map 1.0-4.0 to 0-100
+        currentValue = ((currentValue - 1) / (4 - 1)) * 100
+      }
+      parameterSlider.value = Math.round(currentValue).toString()
+
+      const pitchRatio = cellParams.pitchRatio
+      if (Math.abs(pitchRatio - 1) < 0.01) {
+        sliderParameterValue.textContent = 'Normal Pitch'
+      } else {
+        sliderParameterValue.textContent = `${pitchRatio.toFixed(2)}${unit}`
+      }
+    }
+
   } else {
-    // Generic slider case (volume, filter)
+    // Generic slider case (volume, filter, pitch)
     if (sliderControl) sliderControl.style.display = 'flex'
     controlState.currentParameter = parameter
 
@@ -544,6 +621,27 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
             sliderParameterValue.textContent = `Low-pass ${Math.abs(currentValue)}%`
           } else {
             sliderParameterValue.textContent = 'No Filter'
+          }
+          break
+        case 'pitch':
+          parameterSlider.min = '-100'
+          parameterSlider.max = '100'
+          // Map pitch ratio (0.25-4) to slider (-100 to 100)
+          // 1.0 = 0, 0.25 = -100, 4.0 = 100
+          if (currentValue <= 1) {
+            // Map 0.25-1.0 to -100-0
+            currentValue = ((currentValue - 0.25) / (1 - 0.25)) * 100 - 100
+          } else {
+            // Map 1.0-4.0 to 0-100
+            currentValue = ((currentValue - 1) / (4 - 1)) * 100
+          }
+          parameterSlider.value = Math.round(currentValue).toString()
+
+          const pitchRatio = cellParams.pitchRatio
+          if (Math.abs(pitchRatio - 1) < 0.01) {
+            sliderParameterValue.textContent = 'Normal Pitch'
+          } else {
+            sliderParameterValue.textContent = `${pitchRatio.toFixed(2)}${unit}`
           }
           break
       }
@@ -706,6 +804,61 @@ function handleDelayFeedbackChange(sliderValue: number): void {
   }
 }
 
+function handlePitchChange(sliderValue: number): void {
+  // Handle master effects
+  if (controlState.currentParameter?.startsWith('master_')) {
+    // Convert slider value (-100 to 100) to pitch ratio (0.25 to 4)
+    let actualValue: number
+    if (sliderValue <= 0) {
+      // Map -100-0 to 0.25-1.0
+      actualValue = 0.25 + ((sliderValue + 100) / 100) * (1 - 0.25)
+    } else {
+      // Map 0-100 to 1.0-4.0
+      actualValue = 1 + (sliderValue / 100) * (4 - 1)
+    }
+
+    setMasterEffectParameter('pitchRatio', actualValue)
+
+    const pitchParameterValue = document.getElementById('pitchParameterValue')
+    if (pitchParameterValue) {
+      if (Math.abs(actualValue - 1) < 0.01) {
+        pitchParameterValue.textContent = 'Normal Pitch'
+      } else {
+        pitchParameterValue.textContent = `${actualValue.toFixed(2)}x`
+      }
+    }
+
+    console.log(`🎛️ Master Pitch ratio: ${actualValue.toFixed(2)}x`)
+    return
+  }
+
+  // Handle individual cell effects
+  if (controlState.controlledCellIndex === null) return
+
+  // Convert slider value (-100 to 100) to pitch ratio (0.25 to 4)
+  let actualValue: number
+  if (sliderValue <= 0) {
+    // Map -100-0 to 0.25-1.0
+    actualValue = 0.25 + ((sliderValue + 100) / 100) * (1 - 0.25)
+  } else {
+    // Map 0-100 to 1.0-4.0
+    actualValue = 1 + (sliderValue / 100) * (4 - 1)
+  }
+
+  setCellParameter(controlState.controlledCellIndex, 'pitchRatio', actualValue)
+
+  const pitchParameterValue = document.getElementById('pitchParameterValue')
+  if (pitchParameterValue) {
+    if (Math.abs(actualValue - 1) < 0.01) {
+      pitchParameterValue.textContent = 'Normal Pitch'
+    } else {
+      pitchParameterValue.textContent = `${actualValue.toFixed(2)}x`
+    }
+  }
+
+  console.log(`🎵 Pitch ratio: ${actualValue.toFixed(2)}x for cell ${controlState.controlledCellIndex}`)
+}
+
 function handleParameterChange(sliderValue: number): void {
   // Handle master effects
   if (controlState.currentParameter?.startsWith('master_')) {
@@ -727,6 +880,23 @@ function handleParameterChange(sliderValue: number): void {
 
       else {
         displayText = 'No Filter'
+      }
+    }
+
+    else if (masterParameter === 'pitchRatio') {
+      // Convert slider value (-100 to 100) to pitch ratio (0.25 to 4)
+      if (sliderValue <= 0) {
+        // Map -100-0 to 0.25-1.0
+        actualValue = 0.25 + ((sliderValue + 100) / 100) * (1 - 0.25)
+      } else {
+        // Map 0-100 to 1.0-4.0
+        actualValue = 1 + (sliderValue / 100) * (4 - 1)
+      }
+
+      if (Math.abs(actualValue - 1) < 0.01) {
+        displayText = 'Normal Pitch'
+      } else {
+        displayText = `${actualValue.toFixed(2)}x`
       }
     }
 
@@ -766,11 +936,27 @@ function handleParameterChange(sliderValue: number): void {
         displayText = 'No Filter'
       }
       break
+    case 'pitch':
+      // Convert slider value (-100 to 100) to pitch ratio (0.25 to 4)
+      if (sliderValue <= 0) {
+        // Map -100-0 to 0.25-1.0
+        actualValue = 0.25 + ((sliderValue + 100) / 100) * (1 - 0.25)
+      } else {
+        // Map 0-100 to 1.0-4.0
+        actualValue = 1 + (sliderValue / 100) * (4 - 1)
+      }
+
+      if (Math.abs(actualValue - 1) < 0.01) {
+        displayText = 'Normal Pitch'
+      } else {
+        displayText = `${actualValue.toFixed(2)}x`
+      }
+      break
   }
 
   setCellParameter(
     controlState.controlledCellIndex,
-    controlState.currentParameter as keyof CellParameters,
+    controlState.currentParameter === 'pitch' ? 'pitchRatio' : controlState.currentParameter as keyof CellParameters,
     actualValue
   )
 
@@ -969,9 +1155,14 @@ function setMasterEffectParameter(parameter: keyof MasterEffectParameters, value
     value = Math.min(1, Math.max(0, value))
   }
 
+  else if (parameter === 'pitchRatio') {
+    value = Math.min(4, Math.max(0.25, value))
+  }
+
   masterEffectParameters[parameter] = value
 
   const audioScheduler = getAudioScheduler()
+
   if (audioScheduler.isAudioInitialized()) {
     if (parameter === 'filter') {
       audioScheduler.updateMasterFilterParameter(value)
@@ -983,6 +1174,10 @@ function setMasterEffectParameter(parameter: keyof MasterEffectParameters, value
         masterEffectParameters.delayTime,
         masterEffectParameters.delayFeedback
       )
+    }
+
+    else if (parameter === 'pitchRatio') {
+      audioScheduler.updateMasterPitchParameter(value)
     }
   }
 }
@@ -1025,6 +1220,7 @@ function enterMasterParameterControl(parameter: string, label: string, unit: str
   const sliderControl = document.getElementById('sliderControl')
   const delaySettingsControl = document.getElementById('delaySettingsControl')
 
+  // Hide all by default
   if (loopFractionControl) loopFractionControl.style.display = 'none'
   if (sliderControl) sliderControl.style.display = 'none'
   if (delaySettingsControl) delaySettingsControl.style.display = 'none'
@@ -1051,7 +1247,42 @@ function enterMasterParameterControl(parameter: string, label: string, unit: str
     }
   }
 
-  else {
+  else if (parameter === 'pitch') {
+    // Pitch uses generic slider control like filter
+    if (sliderControl) sliderControl.style.display = 'flex'
+    controlState.currentParameter = 'master_pitchRatio'
+
+    const sliderParameterLabel = document.getElementById('sliderParameterLabel')
+    if (sliderParameterLabel) sliderParameterLabel.textContent = label
+
+    const parameterSlider = document.getElementById('parameterSlider') as HTMLInputElement
+    const sliderParameterValue = document.getElementById('sliderParameterValue')
+
+    if (parameterSlider && sliderParameterValue) {
+      let currentValue = masterEffectParameters.pitchRatio
+
+      parameterSlider.min = '-100'
+      parameterSlider.max = '100'
+      // Map pitch ratio (0.25-4) to slider (-100 to 100)
+      // 1.0 = 0, 0.25 = -100, 4.0 = 100
+      if (currentValue <= 1) {
+        // Map 0.25-1.0 to -100-0
+        currentValue = ((currentValue - 0.25) / (1 - 0.25)) * 100 - 100
+      } else {
+        // Map 1.0-4.0 to 0-100
+        currentValue = ((currentValue - 1) / (4 - 1)) * 100
+      }
+      parameterSlider.value = Math.round(currentValue).toString()
+
+      const pitchRatio = masterEffectParameters.pitchRatio
+      if (Math.abs(pitchRatio - 1) < 0.01) {
+        sliderParameterValue.textContent = 'Normal Pitch'
+      } else {
+        sliderParameterValue.textContent = `${pitchRatio.toFixed(2)}${unit}`
+      }
+    }
+
+  } else {
     if (sliderControl) sliderControl.style.display = 'flex'
 
     const sliderParameterLabel = document.getElementById('sliderParameterLabel')
@@ -1079,6 +1310,29 @@ function enterMasterParameterControl(parameter: string, label: string, unit: str
 
         else {
           sliderParameterValue.textContent = 'No Filter'
+        }
+      }
+
+      else if (parameter === 'pitch') {
+        parameterSlider.min = '-100'
+        parameterSlider.max = '100'
+
+        // Map pitch ratio (0.25-4) to slider (-100 to 100)
+        if (currentValue <= 1) {
+          // Map 0.25-1.0 to -100-0
+          currentValue = ((currentValue - 0.25) / (1 - 0.25)) * 100 - 100
+        } else {
+          // Map 1.0-4.0 to 0-100
+          currentValue = ((currentValue - 1) / (4 - 1)) * 100
+        }
+
+        parameterSlider.value = Math.round(currentValue).toString()
+
+        const pitchRatio = masterEffectParameters.pitchRatio
+        if (Math.abs(pitchRatio - 1) < 0.01) {
+          sliderParameterValue.textContent = 'Normal Pitch'
+        } else {
+          sliderParameterValue.textContent = `${pitchRatio.toFixed(2)}${unit}`
         }
       }
     }
