@@ -1,4 +1,4 @@
-import { looper, type Stem } from './looper.ts'
+import { looper } from './looper.ts'
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
