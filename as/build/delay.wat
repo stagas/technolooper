@@ -2,21 +2,17 @@
  (type $0 (func (param i32) (result i32)))
  (type $1 (func (param i32 i32)))
  (type $2 (func (param i32)))
- (type $3 (func (param i32 i32) (result i32)))
- (type $4 (func))
- (type $5 (func (param i32 i32 i32)))
- (type $6 (func (result i32)))
- (type $7 (func (param i32 i32 i32 i32 i32 f32 f32)))
- (type $8 (func (param i32) (result f32)))
- (type $9 (func (param i32 i32 i64) (result i32)))
- (type $10 (func (param i32 i32 i32 i32)))
- (type $11 (func (param i32 f32)))
- (type $12 (func (param i32 f32 f32 f32 f32 f32) (result f32)))
- (type $13 (func (param i32 i32 f32) (result f32)))
+ (type $3 (func))
+ (type $4 (func (param i32 i32) (result i32)))
+ (type $5 (func (result i32)))
+ (type $6 (func (param i32 i32 i32 i32 i32 f32 f32)))
+ (type $7 (func (param i32 i32 i64)))
+ (type $8 (func (param i32 i32 i32 i32)))
+ (type $9 (func (param i32 i32 i32)))
+ (type $10 (func (param i32 i32 f32) (result f32)))
  (import "env" "memory" (memory $0 500 500))
  (import "env" "abort" (func $~lib/builtins/abort (param i32 i32 i32 i32)))
  (global $~lib/rt/tlsf/ROOT (mut i32) (i32.const 0))
- (global $~lib/native/ASC_LOW_MEMORY_LIMIT i32 (i32.const 0))
  (global $~lib/rt/itcms/total (mut i32) (i32.const 0))
  (global $~lib/rt/itcms/threshold (mut i32) (i32.const 0))
  (global $~lib/rt/itcms/state (mut i32) (i32.const 0))
@@ -25,30 +21,22 @@
  (global $~lib/rt/itcms/iter (mut i32) (i32.const 0))
  (global $~lib/rt/itcms/toSpace (mut i32) (i32.const 0))
  (global $~lib/rt/itcms/white (mut i32) (i32.const 0))
- (global $~lib/shared/runtime/Runtime.Stub i32 (i32.const 0))
- (global $~lib/shared/runtime/Runtime.Minimal i32 (i32.const 1))
- (global $~lib/shared/runtime/Runtime.Incremental i32 (i32.const 2))
  (global $~lib/rt/itcms/fromSpace (mut i32) (i32.const 0))
- (global $~lib/native/ASC_RUNTIME i32 (i32.const 2))
- (global $~lib/rt/__rtti_base i32 (i32.const 656))
- (global $~lib/memory/__data_end i32 (i32.const 692))
- (global $~lib/memory/__stack_pointer (mut i32) (i32.const 33460))
- (global $~lib/memory/__heap_base i32 (i32.const 33460))
- (data $0 (i32.const 12) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00(\00\00\00A\00l\00l\00o\00c\00a\00t\00i\00o\00n\00 \00t\00o\00o\00 \00l\00a\00r\00g\00e\00\00\00\00\00")
- (data $1 (i32.const 76) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\1e\00\00\00~\00l\00i\00b\00/\00r\00t\00/\00t\00l\00s\00f\00.\00t\00s\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data $2 (i32.const 140) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00 \00\00\00~\00l\00i\00b\00/\00r\00t\00/\00i\00t\00c\00m\00s\00.\00t\00s\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data $3 (i32.const 208) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data $4 (i32.const 240) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data $5 (i32.const 268) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00$\00\00\00I\00n\00d\00e\00x\00 \00o\00u\00t\00 \00o\00f\00 \00r\00a\00n\00g\00e\00\00\00\00\00\00\00\00\00")
- (data $6 (i32.const 332) ",\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\14\00\00\00~\00l\00i\00b\00/\00r\00t\00.\00t\00s\00\00\00\00\00\00\00\00\00")
- (data $7 (i32.const 384) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data $8 (i32.const 412) ",\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\1c\00\00\00I\00n\00v\00a\00l\00i\00d\00 \00l\00e\00n\00g\00t\00h\00")
- (data $9 (i32.const 460) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00&\00\00\00~\00l\00i\00b\00/\00s\00t\00a\00t\00i\00c\00a\00r\00r\00a\00y\00.\00t\00s\00\00\00\00\00\00\00")
- (data $10 (i32.const 524) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00*\00\00\00O\00b\00j\00e\00c\00t\00 \00a\00l\00r\00e\00a\00d\00y\00 \00p\00i\00n\00n\00e\00d\00\00\00")
- (data $11 (i32.const 588) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00(\00\00\00O\00b\00j\00e\00c\00t\00 \00i\00s\00 \00n\00o\00t\00 \00p\00i\00n\00n\00e\00d\00\00\00\00\00")
- (data $12 (i32.const 656) "\08\00\00\00 \00\00\00 \00\00\00 \00\00\00\00\00\00\00 \00\00\00$\t\00\00$\01\00\00$\19\00\00")
- (table $0 1 1 funcref)
- (elem $0 (i32.const 1))
+ (global $~lib/rt/__rtti_base i32 (i32.const 1680))
+ (global $~lib/memory/__stack_pointer (mut i32) (i32.const 34484))
+ (data $0 (i32.const 1036) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00(\00\00\00A\00l\00l\00o\00c\00a\00t\00i\00o\00n\00 \00t\00o\00o\00 \00l\00a\00r\00g\00e\00\00\00\00\00")
+ (data $1 (i32.const 1100) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\1e\00\00\00~\00l\00i\00b\00/\00r\00t\00/\00t\00l\00s\00f\00.\00t\00s\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data $2 (i32.const 1164) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00 \00\00\00~\00l\00i\00b\00/\00r\00t\00/\00i\00t\00c\00m\00s\00.\00t\00s\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data $3 (i32.const 1232) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data $4 (i32.const 1264) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data $5 (i32.const 1292) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00$\00\00\00I\00n\00d\00e\00x\00 \00o\00u\00t\00 \00o\00f\00 \00r\00a\00n\00g\00e\00\00\00\00\00\00\00\00\00")
+ (data $6 (i32.const 1356) ",\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\14\00\00\00~\00l\00i\00b\00/\00r\00t\00.\00t\00s\00\00\00\00\00\00\00\00\00")
+ (data $7 (i32.const 1408) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data $8 (i32.const 1436) ",\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00\1c\00\00\00I\00n\00v\00a\00l\00i\00d\00 \00l\00e\00n\00g\00t\00h\00")
+ (data $9 (i32.const 1484) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00&\00\00\00~\00l\00i\00b\00/\00s\00t\00a\00t\00i\00c\00a\00r\00r\00a\00y\00.\00t\00s\00\00\00\00\00\00\00")
+ (data $10 (i32.const 1548) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00*\00\00\00O\00b\00j\00e\00c\00t\00 \00a\00l\00r\00e\00a\00d\00y\00 \00p\00i\00n\00n\00e\00d\00\00\00")
+ (data $11 (i32.const 1612) "<\00\00\00\00\00\00\00\00\00\00\00\02\00\00\00(\00\00\00O\00b\00j\00e\00c\00t\00 \00i\00s\00 \00n\00o\00t\00 \00p\00i\00n\00n\00e\00d\00\00\00\00\00")
+ (data $12 (i32.const 1680) "\08\00\00\00 \00\00\00 \00\00\00 \00\00\00\00\00\00\00 \00\00\00$\t\00\00$\01\00\00$\19\00\00")
  (export "createPlayer" (func $as/assembly/delay/index/createPlayer))
  (export "playerProcess" (func $as/assembly/delay/index/playerProcess))
  (export "createOut" (func $as/assembly/delay/index/createOut))
@@ -64,1640 +52,914 @@
  (export "__rtti_base" (global $~lib/rt/__rtti_base))
  (export "memory" (memory $0))
  (start $~start)
- (func $as/assembly/delay/player/Player#get:sampleRate (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=20
- )
- (func $as/assembly/delay/player/Player#get:maxDelayTime (param $this i32) (result f32)
-  local.get $this
-  f32.load offset=16
- )
- (func $as/assembly/delay/player/Player#set:delayBufferSize (param $this i32) (param $delayBufferSize i32)
-  local.get $this
-  local.get $delayBufferSize
+ (func $as/assembly/delay/player/Player#set:delayBufferSize (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
   i32.store offset=8
  )
- (func $as/assembly/delay/player/Player#get:delayBufferSize (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=8
- )
- (func $~lib/rt/tlsf/Root#set:flMap (param $this i32) (param $flMap i32)
-  local.get $this
-  local.get $flMap
+ (func $~lib/rt/tlsf/Root#set:flMap (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
   i32.store
  )
- (func $~lib/rt/common/BLOCK#get:mmInfo (param $this i32) (result i32)
-  local.get $this
-  i32.load
- )
- (func $~lib/rt/common/BLOCK#set:mmInfo (param $this i32) (param $mmInfo i32)
-  local.get $this
-  local.get $mmInfo
-  i32.store
- )
- (func $~lib/rt/tlsf/Block#set:prev (param $this i32) (param $prev i32)
-  local.get $this
-  local.get $prev
+ (func $~lib/rt/tlsf/Block#set:prev (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
   i32.store offset=4
  )
- (func $~lib/rt/tlsf/Block#set:next (param $this i32) (param $next i32)
-  local.get $this
-  local.get $next
-  i32.store offset=8
- )
- (func $~lib/rt/tlsf/Block#get:prev (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=4
- )
- (func $~lib/rt/tlsf/Block#get:next (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=8
- )
- (func $~lib/rt/tlsf/Root#get:flMap (param $this i32) (result i32)
-  local.get $this
+ (func $~lib/rt/tlsf/removeBlock (param $0 i32) (param $1 i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  local.get $1
   i32.load
- )
- (func $~lib/rt/tlsf/removeBlock (param $root i32) (param $block i32)
-  (local $blockInfo i32)
-  (local $size i32)
-  (local $fl i32)
-  (local $sl i32)
-  (local $6 i32)
-  (local $7 i32)
-  (local $boundedSize i32)
-  (local $prev i32)
-  (local $next i32)
-  (local $root|11 i32)
-  (local $fl|12 i32)
-  (local $sl|13 i32)
-  (local $root|14 i32)
-  (local $fl|15 i32)
-  (local $sl|16 i32)
-  (local $head i32)
-  (local $root|18 i32)
-  (local $fl|19 i32)
-  (local $slMap i32)
-  (local $root|21 i32)
-  (local $fl|22 i32)
-  (local $slMap|23 i32)
-  local.get $block
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  local.set $blockInfo
-  i32.const 1
-  drop
-  local.get $blockInfo
-  i32.const 1
+  i32.const -4
   i32.and
-  drop
-  local.get $blockInfo
-  i32.const 3
-  i32.const -1
-  i32.xor
-  i32.and
-  local.set $size
-  i32.const 1
-  drop
-  local.get $size
-  i32.const 12
-  i32.ge_u
-  drop
-  local.get $size
+  local.tee $3
   i32.const 256
   i32.lt_u
-  if
-   i32.const 0
-   local.set $fl
-   local.get $size
+  if (result i32)
+   local.get $3
    i32.const 4
    i32.shr_u
-   local.set $sl
   else
-   local.get $size
-   local.tee $6
-   i32.const 1073741820
-   local.tee $7
-   local.get $6
-   local.get $7
-   i32.lt_u
-   select
-   local.set $boundedSize
    i32.const 31
-   local.get $boundedSize
+   i32.const 1073741820
+   local.get $3
+   local.get $3
+   i32.const 1073741820
+   i32.ge_u
+   select
+   local.tee $3
    i32.clz
    i32.sub
-   local.set $fl
-   local.get $boundedSize
-   local.get $fl
+   local.tee $4
+   i32.const 7
+   i32.sub
+   local.set $2
+   local.get $3
+   local.get $4
    i32.const 4
    i32.sub
    i32.shr_u
-   i32.const 1
-   i32.const 4
-   i32.shl
-   i32.xor
-   local.set $sl
-   local.get $fl
-   i32.const 8
-   i32.const 1
-   i32.sub
-   i32.sub
-   local.set $fl
-  end
-  i32.const 1
-  drop
-  local.get $fl
-  i32.const 23
-  i32.lt_u
-  if (result i32)
-   local.get $sl
    i32.const 16
-   i32.lt_u
-  else
-   i32.const 0
+   i32.xor
   end
-  drop
-  local.get $block
-  call $~lib/rt/tlsf/Block#get:prev
-  local.set $prev
-  local.get $block
-  call $~lib/rt/tlsf/Block#get:next
-  local.set $next
-  local.get $prev
+  local.set $4
+  local.get $1
+  i32.load offset=8
+  local.set $5
+  local.get $1
+  i32.load offset=4
+  local.tee $3
   if
-   local.get $prev
-   local.get $next
-   call $~lib/rt/tlsf/Block#set:next
+   local.get $3
+   local.get $5
+   call $as/assembly/delay/player/Player#set:delayBufferSize
   end
-  local.get $next
+  local.get $5
   if
-   local.get $next
-   local.get $prev
+   local.get $5
+   local.get $3
    call $~lib/rt/tlsf/Block#set:prev
   end
-  local.get $block
-  block $~lib/rt/tlsf/GETHEAD|inlined.0 (result i32)
-   local.get $root
-   local.set $root|11
-   local.get $fl
-   local.set $fl|12
-   local.get $sl
-   local.set $sl|13
-   local.get $root|11
-   local.get $fl|12
-   i32.const 4
-   i32.shl
-   local.get $sl|13
-   i32.add
-   i32.const 2
-   i32.shl
-   i32.add
-   i32.load offset=96
-   br $~lib/rt/tlsf/GETHEAD|inlined.0
-  end
+  local.get $1
+  local.get $0
+  local.get $2
+  i32.const 4
+  i32.shl
+  local.get $4
+  i32.add
+  i32.const 2
+  i32.shl
+  i32.add
+  local.tee $1
+  i32.load offset=96
   i32.eq
   if
-   local.get $root
-   local.set $root|14
-   local.get $fl
-   local.set $fl|15
-   local.get $sl
-   local.set $sl|16
-   local.get $next
-   local.set $head
-   local.get $root|14
-   local.get $fl|15
-   i32.const 4
-   i32.shl
-   local.get $sl|16
-   i32.add
-   i32.const 2
-   i32.shl
-   i32.add
-   local.get $head
+   local.get $1
+   local.get $5
    i32.store offset=96
-   local.get $next
+   local.get $5
    i32.eqz
    if
-    block $~lib/rt/tlsf/GETSL|inlined.0 (result i32)
-     local.get $root
-     local.set $root|18
-     local.get $fl
-     local.set $fl|19
-     local.get $root|18
-     local.get $fl|19
-     i32.const 2
-     i32.shl
-     i32.add
-     i32.load offset=4
-     br $~lib/rt/tlsf/GETSL|inlined.0
-    end
-    local.set $slMap
-    local.get $root
-    local.set $root|21
-    local.get $fl
-    local.set $fl|22
-    local.get $slMap
-    i32.const 1
-    local.get $sl
-    i32.shl
-    i32.const -1
-    i32.xor
-    i32.and
-    local.tee $slMap
-    local.set $slMap|23
-    local.get $root|21
-    local.get $fl|22
+    local.get $0
+    local.get $2
     i32.const 2
     i32.shl
     i32.add
-    local.get $slMap|23
+    local.tee $1
+    i32.load offset=4
+    i32.const -2
+    local.get $4
+    i32.rotl
+    i32.and
+    local.set $3
+    local.get $1
+    local.get $3
     i32.store offset=4
-    local.get $slMap
+    local.get $3
     i32.eqz
     if
-     local.get $root
-     local.get $root
-     call $~lib/rt/tlsf/Root#get:flMap
-     i32.const 1
-     local.get $fl
-     i32.shl
-     i32.const -1
-     i32.xor
+     local.get $0
+     local.get $0
+     i32.load
+     i32.const -2
+     local.get $2
+     i32.rotl
      i32.and
      call $~lib/rt/tlsf/Root#set:flMap
     end
    end
   end
  )
- (func $~lib/rt/tlsf/insertBlock (param $root i32) (param $block i32)
-  (local $blockInfo i32)
-  (local $block|3 i32)
-  (local $right i32)
-  (local $rightInfo i32)
-  (local $block|6 i32)
-  (local $block|7 i32)
-  (local $left i32)
-  (local $leftInfo i32)
-  (local $size i32)
-  (local $fl i32)
-  (local $sl i32)
-  (local $13 i32)
-  (local $14 i32)
-  (local $boundedSize i32)
-  (local $root|16 i32)
-  (local $fl|17 i32)
-  (local $sl|18 i32)
-  (local $head i32)
-  (local $root|20 i32)
-  (local $fl|21 i32)
-  (local $sl|22 i32)
-  (local $head|23 i32)
-  (local $root|24 i32)
-  (local $fl|25 i32)
-  (local $root|26 i32)
-  (local $fl|27 i32)
-  (local $slMap i32)
-  i32.const 1
-  drop
-  local.get $block
-  drop
-  local.get $block
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  local.set $blockInfo
-  i32.const 1
-  drop
-  local.get $blockInfo
-  i32.const 1
+ (func $~lib/rt/tlsf/insertBlock (param $0 i32) (param $1 i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  (local $6 i32)
+  local.get $1
+  i32.load
+  local.set $3
+  local.get $1
+  i32.const 4
+  i32.add
+  local.get $1
+  i32.load
+  i32.const -4
   i32.and
-  drop
-  block $~lib/rt/tlsf/GETRIGHT|inlined.0 (result i32)
-   local.get $block
-   local.set $block|3
-   local.get $block|3
-   i32.const 4
-   i32.add
-   local.get $block|3
-   call $~lib/rt/common/BLOCK#get:mmInfo
-   i32.const 3
-   i32.const -1
-   i32.xor
-   i32.and
-   i32.add
-   br $~lib/rt/tlsf/GETRIGHT|inlined.0
-  end
-  local.set $right
-  local.get $right
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  local.set $rightInfo
-  local.get $rightInfo
+  i32.add
+  local.tee $4
+  i32.load
+  local.tee $2
   i32.const 1
   i32.and
   if
-   local.get $root
-   local.get $right
+   local.get $0
+   local.get $4
    call $~lib/rt/tlsf/removeBlock
-   local.get $block
-   local.get $blockInfo
+   local.get $1
+   local.get $3
    i32.const 4
    i32.add
-   local.get $rightInfo
-   i32.const 3
-   i32.const -1
-   i32.xor
+   local.get $2
+   i32.const -4
    i32.and
    i32.add
-   local.tee $blockInfo
-   call $~lib/rt/common/BLOCK#set:mmInfo
-   block $~lib/rt/tlsf/GETRIGHT|inlined.1 (result i32)
-    local.get $block
-    local.set $block|6
-    local.get $block|6
-    i32.const 4
-    i32.add
-    local.get $block|6
-    call $~lib/rt/common/BLOCK#get:mmInfo
-    i32.const 3
-    i32.const -1
-    i32.xor
-    i32.and
-    i32.add
-    br $~lib/rt/tlsf/GETRIGHT|inlined.1
-   end
-   local.set $right
-   local.get $right
-   call $~lib/rt/common/BLOCK#get:mmInfo
-   local.set $rightInfo
+   local.tee $3
+   call $~lib/rt/tlsf/Root#set:flMap
+   local.get $1
+   i32.const 4
+   i32.add
+   local.get $1
+   i32.load
+   i32.const -4
+   i32.and
+   i32.add
+   local.tee $4
+   i32.load
+   local.set $2
   end
-  local.get $blockInfo
+  local.get $3
   i32.const 2
   i32.and
   if
-   block $~lib/rt/tlsf/GETFREELEFT|inlined.0 (result i32)
-    local.get $block
-    local.set $block|7
-    local.get $block|7
-    i32.const 4
-    i32.sub
-    i32.load
-    br $~lib/rt/tlsf/GETFREELEFT|inlined.0
-   end
-   local.set $left
-   local.get $left
-   call $~lib/rt/common/BLOCK#get:mmInfo
-   local.set $leftInfo
-   i32.const 1
-   drop
-   local.get $leftInfo
-   i32.const 1
-   i32.and
-   drop
-   local.get $root
-   local.get $left
+   local.get $1
+   i32.const 4
+   i32.sub
+   i32.load
+   local.tee $1
+   i32.load
+   local.set $6
+   local.get $0
+   local.get $1
    call $~lib/rt/tlsf/removeBlock
-   local.get $left
-   local.set $block
-   local.get $block
-   local.get $leftInfo
+   local.get $1
+   local.get $6
    i32.const 4
    i32.add
-   local.get $blockInfo
-   i32.const 3
-   i32.const -1
-   i32.xor
+   local.get $3
+   i32.const -4
    i32.and
    i32.add
-   local.tee $blockInfo
-   call $~lib/rt/common/BLOCK#set:mmInfo
+   local.tee $3
+   call $~lib/rt/tlsf/Root#set:flMap
   end
-  local.get $right
-  local.get $rightInfo
+  local.get $4
+  local.get $2
   i32.const 2
   i32.or
-  call $~lib/rt/common/BLOCK#set:mmInfo
-  local.get $blockInfo
-  i32.const 3
-  i32.const -1
-  i32.xor
-  i32.and
-  local.set $size
-  i32.const 1
-  drop
-  local.get $size
-  i32.const 12
-  i32.ge_u
-  drop
-  i32.const 1
-  drop
-  local.get $block
-  i32.const 4
-  i32.add
-  local.get $size
-  i32.add
-  local.get $right
-  i32.eq
-  drop
-  local.get $right
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $4
   i32.const 4
   i32.sub
-  local.get $block
+  local.get $1
   i32.store
-  local.get $size
+  local.get $0
+  local.get $3
+  i32.const -4
+  i32.and
+  local.tee $2
   i32.const 256
   i32.lt_u
-  if
-   i32.const 0
-   local.set $fl
-   local.get $size
+  if (result i32)
+   local.get $2
    i32.const 4
    i32.shr_u
-   local.set $sl
   else
-   local.get $size
-   local.tee $13
-   i32.const 1073741820
-   local.tee $14
-   local.get $13
-   local.get $14
-   i32.lt_u
-   select
-   local.set $boundedSize
    i32.const 31
-   local.get $boundedSize
+   i32.const 1073741820
+   local.get $2
+   local.get $2
+   i32.const 1073741820
+   i32.ge_u
+   select
+   local.tee $2
    i32.clz
    i32.sub
-   local.set $fl
-   local.get $boundedSize
-   local.get $fl
+   local.tee $3
+   i32.const 7
+   i32.sub
+   local.set $5
+   local.get $2
+   local.get $3
    i32.const 4
    i32.sub
    i32.shr_u
-   i32.const 1
-   i32.const 4
-   i32.shl
-   i32.xor
-   local.set $sl
-   local.get $fl
-   i32.const 8
-   i32.const 1
-   i32.sub
-   i32.sub
-   local.set $fl
-  end
-  i32.const 1
-  drop
-  local.get $fl
-  i32.const 23
-  i32.lt_u
-  if (result i32)
-   local.get $sl
    i32.const 16
-   i32.lt_u
+   i32.xor
+  end
+  local.tee $2
+  local.get $5
+  i32.const 4
+  i32.shl
+  i32.add
+  i32.const 2
+  i32.shl
+  i32.add
+  i32.load offset=96
+  local.set $3
+  local.get $1
+  i32.const 0
+  call $~lib/rt/tlsf/Block#set:prev
+  local.get $1
+  local.get $3
+  call $as/assembly/delay/player/Player#set:delayBufferSize
+  local.get $3
+  if
+   local.get $3
+   local.get $1
+   call $~lib/rt/tlsf/Block#set:prev
+  end
+  local.get $0
+  local.get $5
+  i32.const 4
+  i32.shl
+  local.get $2
+  i32.add
+  i32.const 2
+  i32.shl
+  i32.add
+  local.get $1
+  i32.store offset=96
+  local.get $0
+  local.get $0
+  i32.load
+  i32.const 1
+  local.get $5
+  i32.shl
+  i32.or
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $0
+  local.get $5
+  i32.const 2
+  i32.shl
+  i32.add
+  local.tee $0
+  local.get $0
+  i32.load offset=4
+  i32.const 1
+  local.get $2
+  i32.shl
+  i32.or
+  i32.store offset=4
+ )
+ (func $~lib/rt/tlsf/addMemory (param $0 i32) (param $1 i32) (param $2 i64)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  local.get $1
+  i32.const 19
+  i32.add
+  i32.const -16
+  i32.and
+  i32.const 4
+  i32.sub
+  local.set $1
+  local.get $0
+  i32.load offset=1568
+  local.tee $3
+  if
+   local.get $1
+   i32.const 16
+   i32.sub
+   local.tee $5
+   local.get $3
+   i32.eq
+   if
+    local.get $3
+    i32.load
+    local.set $4
+    local.get $5
+    local.set $1
+   end
+  end
+  local.get $2
+  i32.wrap_i64
+  i32.const -16
+  i32.and
+  local.get $1
+  i32.sub
+  local.tee $3
+  i32.const 20
+  i32.lt_u
+  if
+   return
+  end
+  local.get $1
+  local.get $4
+  i32.const 2
+  i32.and
+  local.get $3
+  i32.const 8
+  i32.sub
+  local.tee $3
+  i32.const 1
+  i32.or
+  i32.or
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $1
+  i32.const 0
+  call $~lib/rt/tlsf/Block#set:prev
+  local.get $1
+  i32.const 0
+  call $as/assembly/delay/player/Player#set:delayBufferSize
+  local.get $1
+  i32.const 4
+  i32.add
+  local.get $3
+  i32.add
+  local.tee $3
+  i32.const 2
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $0
+  local.get $3
+  i32.store offset=1568
+  local.get $0
+  local.get $1
+  call $~lib/rt/tlsf/insertBlock
+ )
+ (func $~lib/rt/tlsf/initialize
+  (local $0 i32)
+  (local $1 i32)
+  memory.size
+  local.tee $0
+  i32.const 0
+  i32.le_s
+  if (result i32)
+   i32.const 1
+   local.get $0
+   i32.sub
+   memory.grow
+   i32.const 0
+   i32.lt_s
   else
    i32.const 0
   end
-  drop
-  block $~lib/rt/tlsf/GETHEAD|inlined.1 (result i32)
-   local.get $root
-   local.set $root|16
-   local.get $fl
-   local.set $fl|17
-   local.get $sl
-   local.set $sl|18
-   local.get $root|16
-   local.get $fl|17
+  if
+   unreachable
+  end
+  i32.const 34496
+  i32.const 0
+  call $~lib/rt/tlsf/Root#set:flMap
+  i32.const 36064
+  i32.const 0
+  i32.store
+  loop $for-loop|0
+   local.get $1
+   i32.const 23
+   i32.lt_u
+   if
+    local.get $1
+    i32.const 2
+    i32.shl
+    i32.const 34496
+    i32.add
+    i32.const 0
+    i32.store offset=4
+    i32.const 0
+    local.set $0
+    loop $for-loop|1
+     local.get $0
+     i32.const 16
+     i32.lt_u
+     if
+      local.get $1
+      i32.const 4
+      i32.shl
+      local.get $0
+      i32.add
+      i32.const 2
+      i32.shl
+      i32.const 34496
+      i32.add
+      i32.const 0
+      i32.store offset=96
+      local.get $0
+      i32.const 1
+      i32.add
+      local.set $0
+      br $for-loop|1
+     end
+    end
+    local.get $1
+    i32.const 1
+    i32.add
+    local.set $1
+    br $for-loop|0
+   end
+  end
+  i32.const 34496
+  i32.const 36068
+  memory.size
+  i64.extend_i32_s
+  i64.const 16
+  i64.shl
+  call $~lib/rt/tlsf/addMemory
+  i32.const 34496
+  global.set $~lib/rt/tlsf/ROOT
+ )
+ (func $~lib/rt/tlsf/roundSize (param $0 i32) (result i32)
+  local.get $0
+  i32.const 1
+  i32.const 27
+  local.get $0
+  i32.clz
+  i32.sub
+  i32.shl
+  i32.add
+  i32.const 1
+  i32.sub
+  local.get $0
+  local.get $0
+  i32.const 536870910
+  i32.lt_u
+  select
+ )
+ (func $~lib/rt/tlsf/searchBlock (param $0 i32) (param $1 i32) (result i32)
+  (local $2 i32)
+  (local $3 i32)
+  local.get $1
+  i32.const 256
+  i32.lt_u
+  if (result i32)
+   local.get $1
+   i32.const 4
+   i32.shr_u
+  else
+   i32.const 31
+   local.get $1
+   call $~lib/rt/tlsf/roundSize
+   local.tee $1
+   i32.clz
+   i32.sub
+   local.tee $3
+   i32.const 7
+   i32.sub
+   local.set $2
+   local.get $1
+   local.get $3
+   i32.const 4
+   i32.sub
+   i32.shr_u
+   i32.const 16
+   i32.xor
+  end
+  local.set $1
+  local.get $0
+  local.get $2
+  i32.const 2
+  i32.shl
+  i32.add
+  i32.load offset=4
+  i32.const -1
+  local.get $1
+  i32.shl
+  i32.and
+  local.tee $1
+  if (result i32)
+   local.get $0
+   local.get $1
+   i32.ctz
+   local.get $2
    i32.const 4
    i32.shl
-   local.get $sl|18
    i32.add
    i32.const 2
    i32.shl
    i32.add
    i32.load offset=96
-   br $~lib/rt/tlsf/GETHEAD|inlined.1
-  end
-  local.set $head
-  local.get $block
-  i32.const 0
-  call $~lib/rt/tlsf/Block#set:prev
-  local.get $block
-  local.get $head
-  call $~lib/rt/tlsf/Block#set:next
-  local.get $head
-  if
-   local.get $head
-   local.get $block
-   call $~lib/rt/tlsf/Block#set:prev
-  end
-  local.get $root
-  local.set $root|20
-  local.get $fl
-  local.set $fl|21
-  local.get $sl
-  local.set $sl|22
-  local.get $block
-  local.set $head|23
-  local.get $root|20
-  local.get $fl|21
-  i32.const 4
-  i32.shl
-  local.get $sl|22
-  i32.add
-  i32.const 2
-  i32.shl
-  i32.add
-  local.get $head|23
-  i32.store offset=96
-  local.get $root
-  local.get $root
-  call $~lib/rt/tlsf/Root#get:flMap
-  i32.const 1
-  local.get $fl
-  i32.shl
-  i32.or
-  call $~lib/rt/tlsf/Root#set:flMap
-  local.get $root
-  local.set $root|26
-  local.get $fl
-  local.set $fl|27
-  block $~lib/rt/tlsf/GETSL|inlined.1 (result i32)
-   local.get $root
-   local.set $root|24
-   local.get $fl
-   local.set $fl|25
-   local.get $root|24
-   local.get $fl|25
-   i32.const 2
+  else
+   local.get $0
+   i32.load
+   i32.const -1
+   local.get $2
+   i32.const 1
+   i32.add
    i32.shl
-   i32.add
-   i32.load offset=4
-   br $~lib/rt/tlsf/GETSL|inlined.1
-  end
-  i32.const 1
-  local.get $sl
-  i32.shl
-  i32.or
-  local.set $slMap
-  local.get $root|26
-  local.get $fl|27
-  i32.const 2
-  i32.shl
-  i32.add
-  local.get $slMap
-  i32.store offset=4
- )
- (func $~lib/rt/tlsf/addMemory (param $root i32) (param $start i32) (param $endU64 i64) (result i32)
-  (local $end i32)
-  (local $root|4 i32)
-  (local $tail i32)
-  (local $tailInfo i32)
-  (local $size i32)
-  (local $leftSize i32)
-  (local $left i32)
-  (local $root|10 i32)
-  (local $tail|11 i32)
-  local.get $endU64
-  i32.wrap_i64
-  local.set $end
-  i32.const 1
-  drop
-  local.get $start
-  i64.extend_i32_u
-  local.get $endU64
-  i64.le_u
-  drop
-  local.get $start
-  i32.const 4
-  i32.add
-  i32.const 15
-  i32.add
-  i32.const 15
-  i32.const -1
-  i32.xor
-  i32.and
-  i32.const 4
-  i32.sub
-  local.set $start
-  local.get $end
-  i32.const 15
-  i32.const -1
-  i32.xor
-  i32.and
-  local.set $end
-  block $~lib/rt/tlsf/GETTAIL|inlined.0 (result i32)
-   local.get $root
-   local.set $root|4
-   local.get $root|4
-   i32.load offset=1568
-   br $~lib/rt/tlsf/GETTAIL|inlined.0
-  end
-  local.set $tail
-  i32.const 0
-  local.set $tailInfo
-  local.get $tail
-  if
-   i32.const 1
-   drop
-   local.get $start
-   local.get $tail
-   i32.const 4
-   i32.add
-   i32.ge_u
-   drop
-   local.get $start
-   i32.const 16
-   i32.sub
-   local.get $tail
-   i32.eq
-   if
-    local.get $start
-    i32.const 16
-    i32.sub
-    local.set $start
-    local.get $tail
-    call $~lib/rt/common/BLOCK#get:mmInfo
-    local.set $tailInfo
-   else
-   end
-  else
-   i32.const 1
-   drop
-   local.get $start
-   local.get $root
-   i32.const 1572
-   i32.add
-   i32.ge_u
-   drop
-  end
-  local.get $end
-  local.get $start
-  i32.sub
-  local.set $size
-  local.get $size
-  i32.const 4
-  i32.const 12
-  i32.add
-  i32.const 4
-  i32.add
-  i32.lt_u
-  if
-   i32.const 0
-   return
-  end
-  local.get $size
-  i32.const 2
-  i32.const 4
-  i32.mul
-  i32.sub
-  local.set $leftSize
-  local.get $start
-  local.set $left
-  local.get $left
-  local.get $leftSize
-  i32.const 1
-  i32.or
-  local.get $tailInfo
-  i32.const 2
-  i32.and
-  i32.or
-  call $~lib/rt/common/BLOCK#set:mmInfo
-  local.get $left
-  i32.const 0
-  call $~lib/rt/tlsf/Block#set:prev
-  local.get $left
-  i32.const 0
-  call $~lib/rt/tlsf/Block#set:next
-  local.get $start
-  i32.const 4
-  i32.add
-  local.get $leftSize
-  i32.add
-  local.set $tail
-  local.get $tail
-  i32.const 0
-  i32.const 2
-  i32.or
-  call $~lib/rt/common/BLOCK#set:mmInfo
-  local.get $root
-  local.set $root|10
-  local.get $tail
-  local.set $tail|11
-  local.get $root|10
-  local.get $tail|11
-  i32.store offset=1568
-  local.get $root
-  local.get $left
-  call $~lib/rt/tlsf/insertBlock
-  i32.const 1
-  return
- )
- (func $~lib/rt/tlsf/initialize
-  (local $rootOffset i32)
-  (local $pagesBefore i32)
-  (local $pagesNeeded i32)
-  (local $root i32)
-  (local $root|4 i32)
-  (local $tail i32)
-  (local $fl i32)
-  (local $root|7 i32)
-  (local $fl|8 i32)
-  (local $slMap i32)
-  (local $sl i32)
-  (local $root|11 i32)
-  (local $fl|12 i32)
-  (local $sl|13 i32)
-  (local $head i32)
-  (local $memStart i32)
-  i32.const 0
-  drop
-  global.get $~lib/memory/__heap_base
-  i32.const 15
-  i32.add
-  i32.const 15
-  i32.const -1
-  i32.xor
-  i32.and
-  local.set $rootOffset
-  memory.size
-  local.set $pagesBefore
-  local.get $rootOffset
-  i32.const 1572
-  i32.add
-  i32.const 65535
-  i32.add
-  i32.const 65535
-  i32.const -1
-  i32.xor
-  i32.and
-  i32.const 16
-  i32.shr_u
-  local.set $pagesNeeded
-  local.get $pagesNeeded
-  local.get $pagesBefore
-  i32.gt_s
-  if (result i32)
-   local.get $pagesNeeded
-   local.get $pagesBefore
-   i32.sub
-   memory.grow
-   i32.const 0
-   i32.lt_s
-  else
-   i32.const 0
-  end
-  if
-   unreachable
-  end
-  local.get $rootOffset
-  local.set $root
-  local.get $root
-  i32.const 0
-  call $~lib/rt/tlsf/Root#set:flMap
-  local.get $root
-  local.set $root|4
-  i32.const 0
-  local.set $tail
-  local.get $root|4
-  local.get $tail
-  i32.store offset=1568
-  i32.const 0
-  local.set $fl
-  loop $for-loop|0
-   local.get $fl
-   i32.const 23
-   i32.lt_u
-   if
-    local.get $root
-    local.set $root|7
-    local.get $fl
-    local.set $fl|8
-    i32.const 0
-    local.set $slMap
-    local.get $root|7
-    local.get $fl|8
+   i32.and
+   local.tee $1
+   if (result i32)
+    local.get $0
+    local.get $0
+    local.get $1
+    i32.ctz
+    local.tee $0
     i32.const 2
     i32.shl
     i32.add
-    local.get $slMap
-    i32.store offset=4
-    i32.const 0
-    local.set $sl
-    loop $for-loop|1
-     local.get $sl
-     i32.const 16
-     i32.lt_u
-     if
-      local.get $root
-      local.set $root|11
-      local.get $fl
-      local.set $fl|12
-      local.get $sl
-      local.set $sl|13
-      i32.const 0
-      local.set $head
-      local.get $root|11
-      local.get $fl|12
-      i32.const 4
-      i32.shl
-      local.get $sl|13
-      i32.add
-      i32.const 2
-      i32.shl
-      i32.add
-      local.get $head
-      i32.store offset=96
-      local.get $sl
-      i32.const 1
-      i32.add
-      local.set $sl
-      br $for-loop|1
-     end
-    end
-    local.get $fl
-    i32.const 1
-    i32.add
-    local.set $fl
-    br $for-loop|0
-   end
-  end
-  local.get $rootOffset
-  i32.const 1572
-  i32.add
-  local.set $memStart
-  i32.const 0
-  drop
-  local.get $root
-  local.get $memStart
-  memory.size
-  i64.extend_i32_s
-  i64.const 16
-  i64.shl
-  call $~lib/rt/tlsf/addMemory
-  drop
-  local.get $root
-  global.set $~lib/rt/tlsf/ROOT
- )
- (func $~lib/rt/tlsf/computeSize (param $size i32) (result i32)
-  local.get $size
-  i32.const 12
-  i32.le_u
-  if (result i32)
-   i32.const 12
-  else
-   local.get $size
-   i32.const 4
-   i32.add
-   i32.const 15
-   i32.add
-   i32.const 15
-   i32.const -1
-   i32.xor
-   i32.and
-   i32.const 4
-   i32.sub
-  end
-  return
- )
- (func $~lib/rt/tlsf/prepareSize (param $size i32) (result i32)
-  local.get $size
-  i32.const 1073741820
-  i32.gt_u
-  if
-   i32.const 32
-   i32.const 96
-   i32.const 461
-   i32.const 29
-   call $~lib/builtins/abort
-   unreachable
-  end
-  local.get $size
-  call $~lib/rt/tlsf/computeSize
-  return
- )
- (func $~lib/rt/tlsf/roundSize (param $size i32) (result i32)
-  local.get $size
-  i32.const 536870910
-  i32.lt_u
-  if (result i32)
-   local.get $size
-   i32.const 1
-   i32.const 27
-   local.get $size
-   i32.clz
-   i32.sub
-   i32.shl
-   i32.add
-   i32.const 1
-   i32.sub
-  else
-   local.get $size
-  end
-  return
- )
- (func $~lib/rt/tlsf/searchBlock (param $root i32) (param $size i32) (result i32)
-  (local $fl i32)
-  (local $sl i32)
-  (local $requestSize i32)
-  (local $root|5 i32)
-  (local $fl|6 i32)
-  (local $slMap i32)
-  (local $head i32)
-  (local $flMap i32)
-  (local $root|10 i32)
-  (local $fl|11 i32)
-  (local $root|12 i32)
-  (local $fl|13 i32)
-  (local $sl|14 i32)
-  (local $root|15 i32)
-  (local $fl|16 i32)
-  (local $sl|17 i32)
-  local.get $size
-  i32.const 256
-  i32.lt_u
-  if
-   i32.const 0
-   local.set $fl
-   local.get $size
-   i32.const 4
-   i32.shr_u
-   local.set $sl
-  else
-   local.get $size
-   call $~lib/rt/tlsf/roundSize
-   local.set $requestSize
-   i32.const 4
-   i32.const 8
-   i32.mul
-   i32.const 1
-   i32.sub
-   local.get $requestSize
-   i32.clz
-   i32.sub
-   local.set $fl
-   local.get $requestSize
-   local.get $fl
-   i32.const 4
-   i32.sub
-   i32.shr_u
-   i32.const 1
-   i32.const 4
-   i32.shl
-   i32.xor
-   local.set $sl
-   local.get $fl
-   i32.const 8
-   i32.const 1
-   i32.sub
-   i32.sub
-   local.set $fl
-  end
-  i32.const 1
-  drop
-  local.get $fl
-  i32.const 23
-  i32.lt_u
-  if (result i32)
-   local.get $sl
-   i32.const 16
-   i32.lt_u
-  else
-   i32.const 0
-  end
-  drop
-  block $~lib/rt/tlsf/GETSL|inlined.2 (result i32)
-   local.get $root
-   local.set $root|5
-   local.get $fl
-   local.set $fl|6
-   local.get $root|5
-   local.get $fl|6
-   i32.const 2
-   i32.shl
-   i32.add
-   i32.load offset=4
-   br $~lib/rt/tlsf/GETSL|inlined.2
-  end
-  i32.const 0
-  i32.const -1
-  i32.xor
-  local.get $sl
-  i32.shl
-  i32.and
-  local.set $slMap
-  i32.const 0
-  local.set $head
-  local.get $slMap
-  i32.eqz
-  if
-   local.get $root
-   call $~lib/rt/tlsf/Root#get:flMap
-   i32.const 0
-   i32.const -1
-   i32.xor
-   local.get $fl
-   i32.const 1
-   i32.add
-   i32.shl
-   i32.and
-   local.set $flMap
-   local.get $flMap
-   i32.eqz
-   if
-    i32.const 0
-    local.set $head
-   else
-    local.get $flMap
+    i32.load offset=4
     i32.ctz
-    local.set $fl
-    block $~lib/rt/tlsf/GETSL|inlined.3 (result i32)
-     local.get $root
-     local.set $root|10
-     local.get $fl
-     local.set $fl|11
-     local.get $root|10
-     local.get $fl|11
-     i32.const 2
-     i32.shl
-     i32.add
-     i32.load offset=4
-     br $~lib/rt/tlsf/GETSL|inlined.3
-    end
-    local.set $slMap
-    i32.const 1
-    drop
-    local.get $slMap
-    drop
-    block $~lib/rt/tlsf/GETHEAD|inlined.2 (result i32)
-     local.get $root
-     local.set $root|12
-     local.get $fl
-     local.set $fl|13
-     local.get $slMap
-     i32.ctz
-     local.set $sl|14
-     local.get $root|12
-     local.get $fl|13
-     i32.const 4
-     i32.shl
-     local.get $sl|14
-     i32.add
-     i32.const 2
-     i32.shl
-     i32.add
-     i32.load offset=96
-     br $~lib/rt/tlsf/GETHEAD|inlined.2
-    end
-    local.set $head
-   end
-  else
-   block $~lib/rt/tlsf/GETHEAD|inlined.3 (result i32)
-    local.get $root
-    local.set $root|15
-    local.get $fl
-    local.set $fl|16
-    local.get $slMap
-    i32.ctz
-    local.set $sl|17
-    local.get $root|15
-    local.get $fl|16
+    local.get $0
     i32.const 4
     i32.shl
-    local.get $sl|17
     i32.add
     i32.const 2
     i32.shl
     i32.add
     i32.load offset=96
-    br $~lib/rt/tlsf/GETHEAD|inlined.3
+   else
+    i32.const 0
    end
-   local.set $head
   end
-  local.get $head
-  return
  )
- (func $~lib/rt/tlsf/growMemory (param $root i32) (param $size i32)
-  (local $pagesBefore i32)
-  (local $root|3 i32)
-  (local $pagesNeeded i32)
-  (local $5 i32)
-  (local $6 i32)
-  (local $pagesWanted i32)
-  (local $pagesAfter i32)
-  i32.const 0
-  drop
-  local.get $size
-  i32.const 256
-  i32.ge_u
+ (func $~lib/rt/tlsf/allocateBlock (param $0 i32) (param $1 i32) (result i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  local.get $1
+  i32.const 1073741820
+  i32.gt_u
   if
-   local.get $size
-   call $~lib/rt/tlsf/roundSize
-   local.set $size
+   i32.const 1056
+   i32.const 1120
+   i32.const 461
+   i32.const 29
+   call $~lib/builtins/abort
+   unreachable
   end
-  memory.size
-  local.set $pagesBefore
-  local.get $size
-  i32.const 4
-  local.get $pagesBefore
-  i32.const 16
-  i32.shl
+  local.get $0
+  i32.const 12
+  local.get $1
+  i32.const 19
+  i32.add
+  i32.const -16
+  i32.and
   i32.const 4
   i32.sub
-  block $~lib/rt/tlsf/GETTAIL|inlined.1 (result i32)
-   local.get $root
-   local.set $root|3
-   local.get $root|3
-   i32.load offset=1568
-   br $~lib/rt/tlsf/GETTAIL|inlined.1
-  end
-  i32.ne
-  i32.shl
-  i32.add
-  local.set $size
-  local.get $size
-  i32.const 65535
-  i32.add
-  i32.const 65535
-  i32.const -1
-  i32.xor
-  i32.and
-  i32.const 16
-  i32.shr_u
-  local.set $pagesNeeded
-  local.get $pagesBefore
-  local.tee $5
-  local.get $pagesNeeded
-  local.tee $6
-  local.get $5
-  local.get $6
-  i32.gt_s
+  local.get $1
+  i32.const 12
+  i32.le_u
   select
-  local.set $pagesWanted
-  local.get $pagesWanted
-  memory.grow
-  i32.const 0
-  i32.lt_s
+  local.tee $1
+  call $~lib/rt/tlsf/searchBlock
+  local.tee $2
+  i32.eqz
   if
-   local.get $pagesNeeded
+   local.get $1
+   i32.const 256
+   i32.ge_u
+   if (result i32)
+    local.get $1
+    call $~lib/rt/tlsf/roundSize
+   else
+    local.get $1
+   end
+   local.set $2
+   memory.size
+   local.tee $3
+   local.get $2
+   i32.const 4
+   local.get $0
+   i32.load offset=1568
+   local.get $3
+   i32.const 16
+   i32.shl
+   i32.const 4
+   i32.sub
+   i32.ne
+   i32.shl
+   i32.add
+   i32.const 65535
+   i32.add
+   i32.const -65536
+   i32.and
+   i32.const 16
+   i32.shr_u
+   local.tee $2
+   local.get $2
+   local.get $3
+   i32.lt_s
+   select
    memory.grow
    i32.const 0
    i32.lt_s
    if
-    unreachable
+    local.get $2
+    memory.grow
+    i32.const 0
+    i32.lt_s
+    if
+     unreachable
+    end
    end
+   local.get $0
+   local.get $3
+   i32.const 16
+   i32.shl
+   memory.size
+   i64.extend_i32_s
+   i64.const 16
+   i64.shl
+   call $~lib/rt/tlsf/addMemory
+   local.get $0
+   local.get $1
+   call $~lib/rt/tlsf/searchBlock
+   local.set $2
   end
-  memory.size
-  local.set $pagesAfter
-  local.get $root
-  local.get $pagesBefore
-  i32.const 16
-  i32.shl
-  local.get $pagesAfter
-  i64.extend_i32_s
-  i64.const 16
-  i64.shl
-  call $~lib/rt/tlsf/addMemory
+  local.get $2
+  i32.load
   drop
- )
- (func $~lib/rt/tlsf/prepareBlock (param $root i32) (param $block i32) (param $size i32)
-  (local $blockInfo i32)
-  (local $remaining i32)
-  (local $spare i32)
-  (local $block|6 i32)
-  (local $block|7 i32)
-  local.get $block
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  local.set $blockInfo
-  i32.const 1
-  drop
-  local.get $size
-  i32.const 4
-  i32.add
-  i32.const 15
+  local.get $0
+  local.get $2
+  call $~lib/rt/tlsf/removeBlock
+  local.get $2
+  i32.load
+  local.tee $3
+  i32.const -4
   i32.and
-  i32.eqz
-  drop
-  local.get $blockInfo
-  i32.const 3
-  i32.const -1
-  i32.xor
-  i32.and
-  local.get $size
+  local.get $1
   i32.sub
-  local.set $remaining
-  local.get $remaining
-  i32.const 4
-  i32.const 12
-  i32.add
+  local.tee $4
+  i32.const 16
   i32.ge_u
   if
-   local.get $block
-   local.get $size
-   local.get $blockInfo
+   local.get $2
+   local.get $1
+   local.get $3
    i32.const 2
    i32.and
    i32.or
-   call $~lib/rt/common/BLOCK#set:mmInfo
-   local.get $block
+   call $~lib/rt/tlsf/Root#set:flMap
+   local.get $2
    i32.const 4
    i32.add
-   local.get $size
+   local.get $1
    i32.add
-   local.set $spare
-   local.get $spare
-   local.get $remaining
+   local.tee $1
+   local.get $4
    i32.const 4
    i32.sub
    i32.const 1
    i32.or
-   call $~lib/rt/common/BLOCK#set:mmInfo
-   local.get $root
-   local.get $spare
+   call $~lib/rt/tlsf/Root#set:flMap
+   local.get $0
+   local.get $1
    call $~lib/rt/tlsf/insertBlock
   else
-   local.get $block
-   local.get $blockInfo
-   i32.const 1
-   i32.const -1
-   i32.xor
+   local.get $2
+   local.get $3
+   i32.const -2
    i32.and
-   call $~lib/rt/common/BLOCK#set:mmInfo
-   block $~lib/rt/tlsf/GETRIGHT|inlined.3 (result i32)
-    local.get $block
-    local.set $block|7
-    local.get $block|7
-    i32.const 4
-    i32.add
-    local.get $block|7
-    call $~lib/rt/common/BLOCK#get:mmInfo
-    i32.const 3
-    i32.const -1
-    i32.xor
-    i32.and
-    i32.add
-    br $~lib/rt/tlsf/GETRIGHT|inlined.3
-   end
-   block $~lib/rt/tlsf/GETRIGHT|inlined.2 (result i32)
-    local.get $block
-    local.set $block|6
-    local.get $block|6
-    i32.const 4
-    i32.add
-    local.get $block|6
-    call $~lib/rt/common/BLOCK#get:mmInfo
-    i32.const 3
-    i32.const -1
-    i32.xor
-    i32.and
-    i32.add
-    br $~lib/rt/tlsf/GETRIGHT|inlined.2
-   end
-   call $~lib/rt/common/BLOCK#get:mmInfo
-   i32.const 2
-   i32.const -1
-   i32.xor
+   call $~lib/rt/tlsf/Root#set:flMap
+   local.get $2
+   i32.const 4
+   i32.add
+   local.get $2
+   i32.load
+   i32.const -4
    i32.and
-   call $~lib/rt/common/BLOCK#set:mmInfo
+   i32.add
+   local.tee $0
+   local.get $0
+   i32.load
+   i32.const -3
+   i32.and
+   call $~lib/rt/tlsf/Root#set:flMap
   end
+  local.get $2
  )
- (func $~lib/rt/tlsf/allocateBlock (param $root i32) (param $size i32) (result i32)
-  (local $payloadSize i32)
-  (local $block i32)
-  local.get $size
-  call $~lib/rt/tlsf/prepareSize
-  local.set $payloadSize
-  local.get $root
-  local.get $payloadSize
-  call $~lib/rt/tlsf/searchBlock
-  local.set $block
-  local.get $block
-  i32.eqz
-  if
-   local.get $root
-   local.get $payloadSize
-   call $~lib/rt/tlsf/growMemory
-   local.get $root
-   local.get $payloadSize
-   call $~lib/rt/tlsf/searchBlock
-   local.set $block
-   i32.const 1
-   drop
-   local.get $block
-   drop
-  end
-  i32.const 1
-  drop
-  local.get $block
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  i32.const 3
-  i32.const -1
-  i32.xor
-  i32.and
-  local.get $payloadSize
-  i32.ge_u
-  drop
-  local.get $root
-  local.get $block
-  call $~lib/rt/tlsf/removeBlock
-  local.get $root
-  local.get $block
-  local.get $payloadSize
-  call $~lib/rt/tlsf/prepareBlock
-  i32.const 0
-  drop
-  local.get $block
-  return
- )
- (func $~lib/rt/tlsf/__alloc (param $size i32) (result i32)
+ (func $~lib/rt/tlsf/__alloc (param $0 i32) (result i32)
   global.get $~lib/rt/tlsf/ROOT
   i32.eqz
   if
    call $~lib/rt/tlsf/initialize
   end
   global.get $~lib/rt/tlsf/ROOT
-  local.get $size
+  local.get $0
   call $~lib/rt/tlsf/allocateBlock
   i32.const 4
   i32.add
-  return
  )
- (func $~lib/memory/heap.alloc (param $size i32) (result i32)
-  local.get $size
-  call $~lib/rt/tlsf/__alloc
-  return
+ (func $~lib/rt/itcms/initLazy (param $0 i32) (result i32)
+  local.get $0
+  local.get $0
+  call $~lib/rt/tlsf/Block#set:prev
+  local.get $0
+  local.get $0
+  call $as/assembly/delay/player/Player#set:delayBufferSize
+  local.get $0
  )
- (func $as/assembly/delay/player/Player#set:delayBufferL (param $this i32) (param $delayBufferL i32)
-  local.get $this
-  local.get $delayBufferL
-  i32.store
- )
- (func $as/assembly/delay/player/Player#set:delayBufferR (param $this i32) (param $delayBufferR i32)
-  local.get $this
-  local.get $delayBufferR
-  i32.store offset=4
- )
- (func $as/assembly/delay/player/Player#get:delayBufferL (param $this i32) (result i32)
-  local.get $this
-  i32.load
- )
- (func $as/assembly/delay/player/Player#get:delayBufferR (param $this i32) (result i32)
-  local.get $this
+ (func $~lib/rt/itcms/Object#get:next (param $0 i32) (result i32)
+  local.get $0
   i32.load offset=4
- )
- (func $~lib/rt/itcms/Object#set:nextWithColor (param $this i32) (param $nextWithColor i32)
-  local.get $this
-  local.get $nextWithColor
-  i32.store offset=4
- )
- (func $~lib/rt/itcms/Object#set:prev (param $this i32) (param $prev i32)
-  local.get $this
-  local.get $prev
-  i32.store offset=8
- )
- (func $~lib/rt/itcms/initLazy (param $space i32) (result i32)
-  local.get $space
-  local.get $space
-  call $~lib/rt/itcms/Object#set:nextWithColor
-  local.get $space
-  local.get $space
-  call $~lib/rt/itcms/Object#set:prev
-  local.get $space
-  return
- )
- (func $~lib/rt/itcms/Object#get:nextWithColor (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=4
- )
- (func $~lib/rt/itcms/Object#get:next (param $this i32) (result i32)
-  local.get $this
-  call $~lib/rt/itcms/Object#get:nextWithColor
-  i32.const 3
-  i32.const -1
-  i32.xor
+  i32.const -4
   i32.and
-  return
  )
- (func $~lib/rt/itcms/Object#get:color (param $this i32) (result i32)
-  local.get $this
-  call $~lib/rt/itcms/Object#get:nextWithColor
+ (func $~lib/rt/itcms/Object#get:color (param $0 i32) (result i32)
+  local.get $0
+  i32.load offset=4
   i32.const 3
   i32.and
-  return
  )
- (func $~lib/rt/itcms/visitRoots (param $cookie i32)
-  (local $pn i32)
-  (local $iter i32)
-  local.get $cookie
-  call $~lib/rt/__visit_globals
+ (func $~lib/rt/itcms/visitRoots
+  (local $0 i32)
+  (local $1 i32)
+  i32.const 1312
+  call $~lib/rt/itcms/__visit
+  i32.const 1456
+  call $~lib/rt/itcms/__visit
+  i32.const 1056
+  call $~lib/rt/itcms/__visit
+  i32.const 1568
+  call $~lib/rt/itcms/__visit
+  i32.const 1632
+  call $~lib/rt/itcms/__visit
   global.get $~lib/rt/itcms/pinSpace
-  local.set $pn
-  local.get $pn
+  local.tee $1
   call $~lib/rt/itcms/Object#get:next
-  local.set $iter
+  local.set $0
   loop $while-continue|0
-   local.get $iter
-   local.get $pn
+   local.get $0
+   local.get $1
    i32.ne
    if
-    i32.const 1
-    drop
-    local.get $iter
+    local.get $0
     call $~lib/rt/itcms/Object#get:color
-    i32.const 3
-    i32.eq
     drop
-    local.get $iter
+    local.get $0
     i32.const 20
     i32.add
-    local.get $cookie
     call $~lib/rt/__visit_members
-    local.get $iter
+    local.get $0
     call $~lib/rt/itcms/Object#get:next
-    local.set $iter
+    local.set $0
     br $while-continue|0
    end
   end
  )
- (func $~lib/rt/itcms/Object#set:color (param $this i32) (param $color i32)
-  local.get $this
-  local.get $this
-  call $~lib/rt/itcms/Object#get:nextWithColor
-  i32.const 3
-  i32.const -1
-  i32.xor
+ (func $~lib/rt/itcms/Object#set:color (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $0
+  i32.load offset=4
+  i32.const -4
   i32.and
-  local.get $color
+  local.get $1
   i32.or
-  call $~lib/rt/itcms/Object#set:nextWithColor
+  call $~lib/rt/tlsf/Block#set:prev
  )
- (func $~lib/rt/itcms/Object#get:prev (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=8
- )
- (func $~lib/rt/itcms/Object#set:next (param $this i32) (param $obj i32)
-  local.get $this
-  local.get $obj
-  local.get $this
-  call $~lib/rt/itcms/Object#get:nextWithColor
+ (func $~lib/rt/itcms/Object#set:next (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
+  local.get $0
+  i32.load offset=4
   i32.const 3
   i32.and
   i32.or
-  call $~lib/rt/itcms/Object#set:nextWithColor
+  call $~lib/rt/tlsf/Block#set:prev
  )
- (func $~lib/rt/itcms/Object#unlink (param $this i32)
-  (local $next i32)
-  (local $prev i32)
-  local.get $this
+ (func $~lib/rt/itcms/Object#unlink (param $0 i32)
+  (local $1 i32)
+  local.get $0
   call $~lib/rt/itcms/Object#get:next
-  local.set $next
-  local.get $next
-  i32.const 0
-  i32.eq
+  local.tee $1
+  i32.eqz
   if
-   i32.const 1
-   drop
-   local.get $this
-   call $~lib/rt/itcms/Object#get:prev
-   i32.const 0
-   i32.eq
-   if (result i32)
-    local.get $this
-    global.get $~lib/memory/__heap_base
-    i32.lt_u
-   else
-    i32.const 0
-   end
+   local.get $0
+   i32.load offset=8
    drop
    return
   end
-  local.get $this
-  call $~lib/rt/itcms/Object#get:prev
-  local.set $prev
-  i32.const 1
-  drop
-  local.get $prev
-  drop
-  local.get $next
-  local.get $prev
-  call $~lib/rt/itcms/Object#set:prev
-  local.get $prev
-  local.get $next
+  local.get $1
+  local.get $0
+  i32.load offset=8
+  local.tee $0
+  call $as/assembly/delay/player/Player#set:delayBufferSize
+  local.get $0
+  local.get $1
   call $~lib/rt/itcms/Object#set:next
  )
- (func $~lib/rt/itcms/Object#get:rtId (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=12
+ (func $~lib/rt/itcms/Object#linkTo (param $0 i32) (param $1 i32) (param $2 i32)
+  (local $3 i32)
+  local.get $1
+  i32.load offset=8
+  local.set $3
+  local.get $0
+  local.get $1
+  local.get $2
+  i32.or
+  call $~lib/rt/tlsf/Block#set:prev
+  local.get $0
+  local.get $3
+  call $as/assembly/delay/player/Player#set:delayBufferSize
+  local.get $3
+  local.get $0
+  call $~lib/rt/itcms/Object#set:next
+  local.get $1
+  local.get $0
+  call $as/assembly/delay/player/Player#set:delayBufferSize
  )
- (func $~lib/shared/typeinfo/Typeinfo#get:flags (param $this i32) (result i32)
-  local.get $this
-  i32.load
- )
- (func $~lib/rt/__typeinfo (param $id i32) (result i32)
-  (local $ptr i32)
-  global.get $~lib/rt/__rtti_base
-  local.set $ptr
-  local.get $id
-  local.get $ptr
-  i32.load
-  i32.gt_u
+ (func $~lib/rt/itcms/Object#makeGray (param $0 i32)
+  (local $1 i32)
+  (local $2 i32)
+  local.get $0
+  global.get $~lib/rt/itcms/iter
+  i32.eq
   if
-   i32.const 288
-   i32.const 352
-   i32.const 21
-   i32.const 28
-   call $~lib/builtins/abort
-   unreachable
+   local.get $0
+   i32.load offset=8
+   global.set $~lib/rt/itcms/iter
   end
-  local.get $ptr
-  i32.const 4
-  i32.add
-  local.get $id
-  i32.const 4
-  i32.mul
-  i32.add
-  call $~lib/shared/typeinfo/Typeinfo#get:flags
-  return
- )
- (func $~lib/rt/itcms/Object#get:isPointerfree (param $this i32) (result i32)
-  (local $rtId i32)
-  local.get $this
-  call $~lib/rt/itcms/Object#get:rtId
-  local.set $rtId
-  local.get $rtId
+  local.get $0
+  call $~lib/rt/itcms/Object#unlink
+  global.get $~lib/rt/itcms/toSpace
+  local.set $1
+  local.get $0
+  i32.load offset=12
+  local.tee $2
   i32.const 2
   i32.le_u
   if (result i32)
    i32.const 1
   else
-   local.get $rtId
-   call $~lib/rt/__typeinfo
+   local.get $2
+   i32.const 1680
+   i32.load
+   i32.gt_u
+   if
+    i32.const 1312
+    i32.const 1376
+    i32.const 21
+    i32.const 28
+    call $~lib/builtins/abort
+    unreachable
+   end
+   local.get $2
+   i32.const 2
+   i32.shl
+   i32.const 1684
+   i32.add
+   i32.load
    i32.const 32
    i32.and
-   i32.const 0
-   i32.ne
   end
-  return
- )
- (func $~lib/rt/itcms/Object#linkTo (param $this i32) (param $list i32) (param $withColor i32)
-  (local $prev i32)
-  local.get $list
-  call $~lib/rt/itcms/Object#get:prev
-  local.set $prev
-  local.get $this
-  local.get $list
-  local.get $withColor
-  i32.or
-  call $~lib/rt/itcms/Object#set:nextWithColor
-  local.get $this
-  local.get $prev
-  call $~lib/rt/itcms/Object#set:prev
-  local.get $prev
-  local.get $this
-  call $~lib/rt/itcms/Object#set:next
-  local.get $list
-  local.get $this
-  call $~lib/rt/itcms/Object#set:prev
- )
- (func $~lib/rt/itcms/Object#makeGray (param $this i32)
-  local.get $this
-  global.get $~lib/rt/itcms/iter
-  i32.eq
-  if
-   local.get $this
-   call $~lib/rt/itcms/Object#get:prev
-   global.set $~lib/rt/itcms/iter
-  end
-  local.get $this
-  call $~lib/rt/itcms/Object#unlink
-  local.get $this
-  global.get $~lib/rt/itcms/toSpace
-  local.get $this
-  call $~lib/rt/itcms/Object#get:isPointerfree
-  if (result i32)
-   global.get $~lib/rt/itcms/white
-   i32.eqz
-  else
-   i32.const 2
-  end
+  local.set $2
+  local.get $0
+  local.get $1
+  global.get $~lib/rt/itcms/white
+  i32.eqz
+  i32.const 2
+  local.get $2
+  select
   call $~lib/rt/itcms/Object#linkTo
  )
- (func $~lib/rt/itcms/__visit (param $ptr i32) (param $cookie i32)
-  (local $obj i32)
-  local.get $ptr
+ (func $~lib/rt/itcms/__visit (param $0 i32)
+  local.get $0
   i32.eqz
   if
    return
   end
-  local.get $ptr
+  local.get $0
   i32.const 20
   i32.sub
-  local.set $obj
-  i32.const 0
-  drop
-  local.get $obj
+  local.tee $0
   call $~lib/rt/itcms/Object#get:color
   global.get $~lib/rt/itcms/white
   i32.eq
   if
-   local.get $obj
+   local.get $0
    call $~lib/rt/itcms/Object#makeGray
    global.get $~lib/rt/itcms/visitCount
    i32.const 1
@@ -1705,84 +967,18 @@
    global.set $~lib/rt/itcms/visitCount
   end
  )
- (func $~lib/rt/itcms/visitStack (param $cookie i32)
-  (local $ptr i32)
-  global.get $~lib/memory/__stack_pointer
-  local.set $ptr
-  loop $while-continue|0
-   local.get $ptr
-   global.get $~lib/memory/__heap_base
-   i32.lt_u
-   if
-    local.get $ptr
-    i32.load
-    local.get $cookie
-    call $~lib/rt/itcms/__visit
-    local.get $ptr
-    i32.const 4
-    i32.add
-    local.set $ptr
-    br $while-continue|0
-   end
-  end
- )
- (func $~lib/rt/itcms/Object#get:size (param $this i32) (result i32)
-  i32.const 4
-  local.get $this
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  i32.const 3
-  i32.const -1
-  i32.xor
+ (func $~lib/rt/itcms/Object#get:size (param $0 i32) (result i32)
+  local.get $0
+  i32.load
+  i32.const -4
   i32.and
-  i32.add
-  return
- )
- (func $~lib/rt/tlsf/checkUsedBlock (param $ptr i32) (result i32)
-  (local $block i32)
-  local.get $ptr
   i32.const 4
-  i32.sub
-  local.set $block
-  local.get $ptr
-  i32.const 0
-  i32.ne
-  if (result i32)
-   local.get $ptr
-   i32.const 15
-   i32.and
-   i32.eqz
-  else
-   i32.const 0
-  end
-  if (result i32)
-   local.get $block
-   call $~lib/rt/common/BLOCK#get:mmInfo
-   i32.const 1
-   i32.and
-   i32.eqz
-  else
-   i32.const 0
-  end
-  drop
-  local.get $block
-  return
+  i32.add
  )
- (func $~lib/rt/tlsf/freeBlock (param $root i32) (param $block i32)
-  i32.const 0
-  drop
-  local.get $block
-  local.get $block
-  call $~lib/rt/common/BLOCK#get:mmInfo
-  i32.const 1
-  i32.or
-  call $~lib/rt/common/BLOCK#set:mmInfo
-  local.get $root
-  local.get $block
-  call $~lib/rt/tlsf/insertBlock
- )
- (func $~lib/rt/tlsf/__free (param $ptr i32)
-  local.get $ptr
-  global.get $~lib/memory/__heap_base
+ (func $~lib/rt/tlsf/__free (param $0 i32)
+  (local $1 i32)
+  local.get $0
+  i32.const 34484
   i32.lt_u
   if
    return
@@ -1792,285 +988,221 @@
   if
    call $~lib/rt/tlsf/initialize
   end
-  global.get $~lib/rt/tlsf/ROOT
-  local.get $ptr
-  call $~lib/rt/tlsf/checkUsedBlock
-  call $~lib/rt/tlsf/freeBlock
- )
- (func $~lib/rt/itcms/free (param $obj i32)
-  local.get $obj
-  global.get $~lib/memory/__heap_base
-  i32.lt_u
-  if
-   local.get $obj
-   i32.const 0
-   call $~lib/rt/itcms/Object#set:nextWithColor
-   local.get $obj
-   i32.const 0
-   call $~lib/rt/itcms/Object#set:prev
+  local.get $0
+  i32.const 4
+  i32.sub
+  local.set $1
+  local.get $0
+  i32.const 15
+  i32.and
+  i32.const 1
+  local.get $0
+  select
+  if (result i32)
+   i32.const 1
   else
-   global.get $~lib/rt/itcms/total
-   local.get $obj
-   call $~lib/rt/itcms/Object#get:size
-   i32.sub
-   global.set $~lib/rt/itcms/total
-   i32.const 0
-   drop
-   local.get $obj
-   i32.const 4
-   i32.add
-   call $~lib/rt/tlsf/__free
+   local.get $1
+   i32.load
+   i32.const 1
+   i32.and
   end
+  drop
+  global.get $~lib/rt/tlsf/ROOT
+  local.set $0
+  local.get $1
+  local.get $1
+  i32.load
+  i32.const 1
+  i32.or
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $0
+  local.get $1
+  call $~lib/rt/tlsf/insertBlock
  )
  (func $~lib/rt/itcms/step (result i32)
-  (local $obj i32)
+  (local $0 i32)
   (local $1 i32)
-  (local $black i32)
-  (local $from i32)
   block $break|0
    block $case2|0
     block $case1|0
      block $case0|0
       global.get $~lib/rt/itcms/state
-      local.set $1
-      local.get $1
-      i32.const 0
-      i32.eq
-      br_if $case0|0
-      local.get $1
-      i32.const 1
-      i32.eq
-      br_if $case1|0
-      local.get $1
-      i32.const 2
-      i32.eq
-      br_if $case2|0
-      br $break|0
+      br_table $case0|0 $case1|0 $case2|0 $break|0
      end
      i32.const 1
      global.set $~lib/rt/itcms/state
      i32.const 0
      global.set $~lib/rt/itcms/visitCount
-     i32.const 0
      call $~lib/rt/itcms/visitRoots
      global.get $~lib/rt/itcms/toSpace
      global.set $~lib/rt/itcms/iter
      global.get $~lib/rt/itcms/visitCount
-     i32.const 1
-     i32.mul
      return
     end
     global.get $~lib/rt/itcms/white
     i32.eqz
-    local.set $black
+    local.set $1
     global.get $~lib/rt/itcms/iter
     call $~lib/rt/itcms/Object#get:next
-    local.set $obj
+    local.set $0
     loop $while-continue|1
-     local.get $obj
+     local.get $0
      global.get $~lib/rt/itcms/toSpace
      i32.ne
      if
-      local.get $obj
+      local.get $0
       global.set $~lib/rt/itcms/iter
-      local.get $obj
+      local.get $0
       call $~lib/rt/itcms/Object#get:color
-      local.get $black
+      local.get $1
       i32.ne
       if
-       local.get $obj
-       local.get $black
+       local.get $0
+       local.get $1
        call $~lib/rt/itcms/Object#set:color
        i32.const 0
        global.set $~lib/rt/itcms/visitCount
-       local.get $obj
+       local.get $0
        i32.const 20
        i32.add
-       i32.const 0
        call $~lib/rt/__visit_members
        global.get $~lib/rt/itcms/visitCount
-       i32.const 1
-       i32.mul
        return
       end
-      local.get $obj
+      local.get $0
       call $~lib/rt/itcms/Object#get:next
-      local.set $obj
+      local.set $0
       br $while-continue|1
      end
     end
     i32.const 0
     global.set $~lib/rt/itcms/visitCount
-    i32.const 0
     call $~lib/rt/itcms/visitRoots
     global.get $~lib/rt/itcms/iter
     call $~lib/rt/itcms/Object#get:next
-    local.set $obj
-    local.get $obj
     global.get $~lib/rt/itcms/toSpace
     i32.eq
     if
-     i32.const 0
-     call $~lib/rt/itcms/visitStack
+     global.get $~lib/memory/__stack_pointer
+     local.set $0
+     loop $while-continue|0
+      local.get $0
+      i32.const 34484
+      i32.lt_u
+      if
+       local.get $0
+       i32.load
+       call $~lib/rt/itcms/__visit
+       local.get $0
+       i32.const 4
+       i32.add
+       local.set $0
+       br $while-continue|0
+      end
+     end
      global.get $~lib/rt/itcms/iter
      call $~lib/rt/itcms/Object#get:next
-     local.set $obj
+     local.set $0
      loop $while-continue|2
-      local.get $obj
+      local.get $0
       global.get $~lib/rt/itcms/toSpace
       i32.ne
       if
-       local.get $obj
+       local.get $0
        call $~lib/rt/itcms/Object#get:color
-       local.get $black
+       local.get $1
        i32.ne
        if
-        local.get $obj
-        local.get $black
+        local.get $0
+        local.get $1
         call $~lib/rt/itcms/Object#set:color
-        local.get $obj
+        local.get $0
         i32.const 20
         i32.add
-        i32.const 0
         call $~lib/rt/__visit_members
        end
-       local.get $obj
+       local.get $0
        call $~lib/rt/itcms/Object#get:next
-       local.set $obj
+       local.set $0
        br $while-continue|2
       end
      end
      global.get $~lib/rt/itcms/fromSpace
-     local.set $from
+     local.set $0
      global.get $~lib/rt/itcms/toSpace
      global.set $~lib/rt/itcms/fromSpace
-     local.get $from
+     local.get $0
      global.set $~lib/rt/itcms/toSpace
-     local.get $black
+     local.get $1
      global.set $~lib/rt/itcms/white
-     local.get $from
+     local.get $0
      call $~lib/rt/itcms/Object#get:next
      global.set $~lib/rt/itcms/iter
      i32.const 2
      global.set $~lib/rt/itcms/state
     end
     global.get $~lib/rt/itcms/visitCount
-    i32.const 1
-    i32.mul
     return
    end
    global.get $~lib/rt/itcms/iter
-   local.set $obj
-   local.get $obj
+   local.tee $0
    global.get $~lib/rt/itcms/toSpace
    i32.ne
    if
-    local.get $obj
+    local.get $0
     call $~lib/rt/itcms/Object#get:next
     global.set $~lib/rt/itcms/iter
-    i32.const 1
-    drop
-    local.get $obj
+    local.get $0
     call $~lib/rt/itcms/Object#get:color
-    global.get $~lib/rt/itcms/white
-    i32.eqz
-    i32.eq
     drop
-    local.get $obj
-    call $~lib/rt/itcms/free
+    local.get $0
+    i32.const 34484
+    i32.lt_u
+    if
+     local.get $0
+     i32.const 0
+     call $~lib/rt/tlsf/Block#set:prev
+     local.get $0
+     i32.const 0
+     call $as/assembly/delay/player/Player#set:delayBufferSize
+    else
+     global.get $~lib/rt/itcms/total
+     local.get $0
+     call $~lib/rt/itcms/Object#get:size
+     i32.sub
+     global.set $~lib/rt/itcms/total
+     local.get $0
+     i32.const 4
+     i32.add
+     call $~lib/rt/tlsf/__free
+    end
     i32.const 10
     return
    end
    global.get $~lib/rt/itcms/toSpace
    global.get $~lib/rt/itcms/toSpace
-   call $~lib/rt/itcms/Object#set:nextWithColor
+   call $~lib/rt/tlsf/Block#set:prev
    global.get $~lib/rt/itcms/toSpace
    global.get $~lib/rt/itcms/toSpace
-   call $~lib/rt/itcms/Object#set:prev
+   call $as/assembly/delay/player/Player#set:delayBufferSize
    i32.const 0
    global.set $~lib/rt/itcms/state
-   br $break|0
   end
   i32.const 0
-  return
  )
- (func $~lib/rt/itcms/interrupt
-  (local $budget i32)
-  i32.const 0
-  drop
-  i32.const 0
-  drop
-  i32.const 1024
-  i32.const 200
-  i32.mul
-  i32.const 100
-  i32.div_u
-  local.set $budget
-  loop $do-loop|0
-   local.get $budget
-   call $~lib/rt/itcms/step
-   i32.sub
-   local.set $budget
-   global.get $~lib/rt/itcms/state
-   i32.const 0
-   i32.eq
-   if
-    i32.const 0
-    drop
-    global.get $~lib/rt/itcms/total
-    i64.extend_i32_u
-    i32.const 200
-    i64.extend_i32_u
-    i64.mul
-    i64.const 100
-    i64.div_u
-    i32.wrap_i64
-    i32.const 1024
-    i32.add
-    global.set $~lib/rt/itcms/threshold
-    i32.const 0
-    drop
-    return
-   end
-   local.get $budget
-   i32.const 0
-   i32.gt_s
-   br_if $do-loop|0
-  end
-  i32.const 0
-  drop
-  global.get $~lib/rt/itcms/total
-  i32.const 1024
-  global.get $~lib/rt/itcms/total
-  global.get $~lib/rt/itcms/threshold
-  i32.sub
-  i32.const 1024
-  i32.lt_u
-  i32.mul
-  i32.add
-  global.set $~lib/rt/itcms/threshold
-  i32.const 0
-  drop
- )
- (func $~lib/rt/itcms/Object#set:rtId (param $this i32) (param $rtId i32)
-  local.get $this
-  local.get $rtId
+ (func $~lib/rt/itcms/Object#set:rtId (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
   i32.store offset=12
  )
- (func $~lib/rt/itcms/Object#set:rtSize (param $this i32) (param $rtSize i32)
-  local.get $this
-  local.get $rtSize
-  i32.store offset=16
- )
- (func $~lib/rt/itcms/__new (param $size i32) (param $id i32) (result i32)
-  (local $obj i32)
-  (local $ptr i32)
-  local.get $size
+ (func $~lib/rt/itcms/__new (param $0 i32) (param $1 i32) (result i32)
+  (local $2 i32)
+  local.get $0
   i32.const 1073741804
   i32.ge_u
   if
-   i32.const 32
-   i32.const 160
+   i32.const 1056
+   i32.const 1184
    i32.const 261
    i32.const 31
    call $~lib/builtins/abort
@@ -2080,231 +1212,159 @@
   global.get $~lib/rt/itcms/threshold
   i32.ge_u
   if
-   call $~lib/rt/itcms/interrupt
+   block $__inlined_func$~lib/rt/itcms/interrupt$36
+    i32.const 2048
+    local.set $2
+    loop $do-loop|0
+     local.get $2
+     call $~lib/rt/itcms/step
+     i32.sub
+     local.set $2
+     global.get $~lib/rt/itcms/state
+     i32.eqz
+     if
+      global.get $~lib/rt/itcms/total
+      i64.extend_i32_u
+      i64.const 200
+      i64.mul
+      i64.const 100
+      i64.div_u
+      i32.wrap_i64
+      i32.const 1024
+      i32.add
+      global.set $~lib/rt/itcms/threshold
+      br $__inlined_func$~lib/rt/itcms/interrupt$36
+     end
+     local.get $2
+     i32.const 0
+     i32.gt_s
+     br_if $do-loop|0
+    end
+    global.get $~lib/rt/itcms/total
+    global.get $~lib/rt/itcms/total
+    global.get $~lib/rt/itcms/threshold
+    i32.sub
+    i32.const 1024
+    i32.lt_u
+    i32.const 10
+    i32.shl
+    i32.add
+    global.set $~lib/rt/itcms/threshold
+   end
   end
+  local.get $0
   i32.const 16
-  local.get $size
   i32.add
   call $~lib/rt/tlsf/__alloc
   i32.const 4
   i32.sub
-  local.set $obj
-  local.get $obj
-  local.get $id
+  local.tee $2
+  local.get $1
   call $~lib/rt/itcms/Object#set:rtId
-  local.get $obj
-  local.get $size
-  call $~lib/rt/itcms/Object#set:rtSize
-  local.get $obj
+  local.get $2
+  local.get $0
+  i32.store offset=16
+  local.get $2
   global.get $~lib/rt/itcms/fromSpace
   global.get $~lib/rt/itcms/white
   call $~lib/rt/itcms/Object#linkTo
   global.get $~lib/rt/itcms/total
-  local.get $obj
+  local.get $2
   call $~lib/rt/itcms/Object#get:size
   i32.add
   global.set $~lib/rt/itcms/total
-  local.get $obj
+  local.get $2
   i32.const 20
   i32.add
-  local.set $ptr
-  local.get $ptr
+  local.tee $1
   i32.const 0
-  local.get $size
+  local.get $0
   memory.fill
-  local.get $ptr
-  return
+  local.get $1
  )
- (func $as/assembly/delay/player/Player#set:sampleRate (param $this i32) (param $sampleRate i32)
-  local.get $this
-  local.get $sampleRate
-  i32.store offset=20
- )
- (func $as/assembly/delay/player/Player#set:writePos (param $this i32) (param $writePos i32)
-  local.get $this
-  local.get $writePos
-  i32.store offset=12
- )
- (func $as/assembly/delay/player/Player#set:maxDelayTime (param $this i32) (param $maxDelayTime f32)
-  local.get $this
-  local.get $maxDelayTime
-  f32.store offset=16
- )
- (func $as/assembly/delay/index/createPlayer (param $sampleRate i32) (result i32)
-  i32.const 0
-  local.get $sampleRate
+ (func $as/assembly/delay/index/createPlayer (param $0 i32) (result i32)
+  local.get $0
   call $as/assembly/delay/player/Player#constructor
-  return
- )
- (func $as/assembly/delay/shared/Out#get:L$ (param $this i32) (result i32)
-  local.get $this
-  i32.load
- )
- (func $as/assembly/delay/shared/Out#get:R$ (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=4
- )
- (func $as/assembly/delay/player/Player#get:writePos (param $this i32) (result i32)
-  local.get $this
-  i32.load offset=12
- )
- (func $as/assembly/delay/player/Player#cubicInterpolate (param $this i32) (param $y0 f32) (param $y1 f32) (param $y2 f32) (param $y3 f32) (param $mu f32) (result f32)
-  (local $mu2 f32)
-  (local $a0 f32)
-  (local $a1 f32)
-  (local $a2 f32)
-  (local $a3 f32)
-  local.get $mu
-  local.get $mu
-  f32.mul
-  local.set $mu2
-  local.get $y3
-  local.get $y2
-  f32.sub
-  local.get $y0
-  f32.sub
-  local.get $y1
-  f32.add
-  local.set $a0
-  local.get $y0
-  local.get $y1
-  f32.sub
-  local.get $a0
-  f32.sub
-  local.set $a1
-  local.get $y2
-  local.get $y0
-  f32.sub
-  local.set $a2
-  local.get $y1
-  local.set $a3
-  local.get $a0
-  local.get $mu
-  f32.mul
-  local.get $mu2
-  f32.mul
-  local.get $a1
-  local.get $mu2
-  f32.mul
-  f32.add
-  local.get $a2
-  local.get $mu
-  f32.mul
-  f32.add
-  local.get $a3
-  f32.add
-  return
- )
- (func $as/assembly/delay/shared/Out#set:L$ (param $this i32) (param $L$ i32)
-  local.get $this
-  local.get $L$
-  i32.store
- )
- (func $as/assembly/delay/shared/Out#set:R$ (param $this i32) (param $R$ i32)
-  local.get $this
-  local.get $R$
-  i32.store offset=4
- )
- (func $as/assembly/delay/shared/Out#constructor (param $this i32) (result i32)
-  local.get $this
-  i32.eqz
-  if
-   i32.const 8
-   call $~lib/rt/tlsf/__alloc
-   local.set $this
-  end
-  local.get $this
-  i32.const 0
-  call $as/assembly/delay/shared/Out#set:L$
-  local.get $this
-  i32.const 0
-  call $as/assembly/delay/shared/Out#set:R$
-  local.get $this
  )
  (func $as/assembly/delay/index/createOut (result i32)
+  (local $0 i32)
+  i32.const 8
+  call $~lib/rt/tlsf/__alloc
+  local.tee $0
   i32.const 0
-  call $as/assembly/delay/shared/Out#constructor
-  return
+  call $~lib/rt/tlsf/Root#set:flMap
+  local.get $0
+  i32.const 0
+  call $~lib/rt/tlsf/Block#set:prev
+  local.get $0
  )
- (func $as/assembly/alloc/heap_alloc (param $size i32) (result i32)
-  local.get $size
-  call $~lib/memory/heap.alloc
-  return
+ (func $as/assembly/alloc/heap_alloc (param $0 i32) (result i32)
+  local.get $0
+  call $~lib/rt/tlsf/__alloc
  )
- (func $~lib/memory/heap.free (param $ptr i32)
-  local.get $ptr
+ (func $as/assembly/alloc/heap_free (param $0 i32)
+  local.get $0
   call $~lib/rt/tlsf/__free
  )
- (func $as/assembly/alloc/heap_free (param $ptr i32)
-  local.get $ptr
-  call $~lib/memory/heap.free
+ (func $as/assembly/alloc/allocI32 (param $0 i32) (result i32)
+  local.get $0
+  i32.const 5
+  call $byn$mgfn-shared$as/assembly/alloc/allocI32
  )
- (func $as/assembly/alloc/allocI32 (param $length i32) (result i32)
-  i32.const 0
-  local.get $length
-  call $~lib/staticarray/StaticArray<i32>#constructor
-  return
+ (func $as/assembly/alloc/allocU32 (param $0 i32) (result i32)
+  local.get $0
+  i32.const 6
+  call $byn$mgfn-shared$as/assembly/alloc/allocI32
  )
- (func $as/assembly/alloc/allocU32 (param $length i32) (result i32)
-  i32.const 0
-  local.get $length
-  call $~lib/staticarray/StaticArray<u32>#constructor
-  return
+ (func $as/assembly/alloc/allocF32 (param $0 i32) (result i32)
+  local.get $0
+  i32.const 7
+  call $byn$mgfn-shared$as/assembly/alloc/allocI32
  )
- (func $as/assembly/alloc/allocF32 (param $length i32) (result i32)
-  i32.const 0
-  local.get $length
-  call $~lib/staticarray/StaticArray<f32>#constructor
-  return
- )
- (func $~lib/rt/itcms/__pin (param $ptr i32) (result i32)
-  (local $obj i32)
-  local.get $ptr
+ (func $~lib/rt/itcms/__pin (param $0 i32) (result i32)
+  (local $1 i32)
+  local.get $0
   if
-   local.get $ptr
+   local.get $0
    i32.const 20
    i32.sub
-   local.set $obj
-   local.get $obj
+   local.tee $1
    call $~lib/rt/itcms/Object#get:color
    i32.const 3
    i32.eq
    if
-    i32.const 544
-    i32.const 160
+    i32.const 1568
+    i32.const 1184
     i32.const 338
     i32.const 7
     call $~lib/builtins/abort
     unreachable
    end
-   local.get $obj
+   local.get $1
    call $~lib/rt/itcms/Object#unlink
-   local.get $obj
+   local.get $1
    global.get $~lib/rt/itcms/pinSpace
    i32.const 3
    call $~lib/rt/itcms/Object#linkTo
   end
-  local.get $ptr
-  return
+  local.get $0
  )
- (func $~lib/rt/itcms/__unpin (param $ptr i32)
-  (local $obj i32)
-  local.get $ptr
+ (func $~lib/rt/itcms/__unpin (param $0 i32)
+  local.get $0
   i32.eqz
   if
    return
   end
-  local.get $ptr
+  local.get $0
   i32.const 20
   i32.sub
-  local.set $obj
-  local.get $obj
+  local.tee $0
   call $~lib/rt/itcms/Object#get:color
   i32.const 3
   i32.ne
   if
-   i32.const 608
-   i32.const 160
+   i32.const 1632
+   i32.const 1184
    i32.const 352
    i32.const 5
    call $~lib/builtins/abort
@@ -2314,28 +1374,24 @@
   i32.const 1
   i32.eq
   if
-   local.get $obj
+   local.get $0
    call $~lib/rt/itcms/Object#makeGray
   else
-   local.get $obj
+   local.get $0
    call $~lib/rt/itcms/Object#unlink
-   local.get $obj
+   local.get $0
    global.get $~lib/rt/itcms/fromSpace
    global.get $~lib/rt/itcms/white
    call $~lib/rt/itcms/Object#linkTo
   end
  )
  (func $~lib/rt/itcms/__collect
-  i32.const 0
-  drop
   global.get $~lib/rt/itcms/state
   i32.const 0
   i32.gt_s
   if
    loop $while-continue|0
     global.get $~lib/rt/itcms/state
-    i32.const 0
-    i32.ne
     if
      call $~lib/rt/itcms/step
      drop
@@ -2347,8 +1403,6 @@
   drop
   loop $while-continue|1
    global.get $~lib/rt/itcms/state
-   i32.const 0
-   i32.ne
    if
     call $~lib/rt/itcms/step
     drop
@@ -2357,8 +1411,7 @@
   end
   global.get $~lib/rt/itcms/total
   i64.extend_i32_u
-  i32.const 200
-  i64.extend_i32_u
+  i64.const 200
   i64.mul
   i64.const 100
   i64.div_u
@@ -2366,46 +1419,8 @@
   i32.const 1024
   i32.add
   global.set $~lib/rt/itcms/threshold
-  i32.const 0
-  drop
-  i32.const 0
-  drop
  )
- (func $~lib/rt/__visit_globals (param $0 i32)
-  (local $1 i32)
-  i32.const 288
-  local.get $0
-  call $~lib/rt/itcms/__visit
-  i32.const 432
-  local.get $0
-  call $~lib/rt/itcms/__visit
-  i32.const 32
-  local.get $0
-  call $~lib/rt/itcms/__visit
-  i32.const 544
-  local.get $0
-  call $~lib/rt/itcms/__visit
-  i32.const 608
-  local.get $0
-  call $~lib/rt/itcms/__visit
- )
- (func $~lib/arraybuffer/ArrayBufferView~visit (param $0 i32) (param $1 i32)
-  (local $2 i32)
-  local.get $0
-  local.get $1
-  call $~lib/object/Object~visit
-  local.get $0
-  i32.load
-  local.tee $2
-  if
-   local.get $2
-   local.get $1
-   call $~lib/rt/itcms/__visit
-  end
- )
- (func $~lib/object/Object~visit (param $0 i32) (param $1 i32)
- )
- (func $~lib/rt/__visit_members (param $0 i32) (param $1 i32)
+ (func $~lib/rt/__visit_members (param $0 i32)
   block $invalid
    block $~lib/staticarray/StaticArray<f32>
     block $~lib/staticarray/StaticArray<u32>
@@ -2428,8 +1443,12 @@
         return
        end
        local.get $0
-       local.get $1
-       call $~lib/arraybuffer/ArrayBufferView~visit
+       i32.load
+       local.tee $0
+       if
+        local.get $0
+        call $~lib/rt/itcms/__visit
+       end
        return
       end
       return
@@ -2446,36 +1465,37 @@
   memory.size
   i32.const 16
   i32.shl
-  global.get $~lib/memory/__heap_base
+  i32.const 34484
   i32.sub
   i32.const 1
   i32.shr_u
   global.set $~lib/rt/itcms/threshold
-  i32.const 208
+  i32.const 1232
   call $~lib/rt/itcms/initLazy
   global.set $~lib/rt/itcms/pinSpace
-  i32.const 240
+  i32.const 1264
   call $~lib/rt/itcms/initLazy
   global.set $~lib/rt/itcms/toSpace
-  i32.const 384
+  i32.const 1408
   call $~lib/rt/itcms/initLazy
   global.set $~lib/rt/itcms/fromSpace
  )
  (func $~stack_check
   global.get $~lib/memory/__stack_pointer
-  global.get $~lib/memory/__data_end
+  i32.const 1716
   i32.lt_s
   if
-   i32.const 33488
-   i32.const 33536
+   i32.const 34512
+   i32.const 34560
    i32.const 1
    i32.const 1
    call $~lib/builtins/abort
    unreachable
   end
  )
- (func $as/assembly/delay/player/Player#constructor (param $this i32) (param $sampleRate i32) (result i32)
-  (local $2 i32)
+ (func $as/assembly/delay/player/Player#constructor (param $0 i32) (result i32)
+  (local $1 i32)
+  (local $2 f32)
   global.get $~lib/memory/__stack_pointer
   i32.const 12
   i32.sub
@@ -2487,179 +1507,142 @@
   global.get $~lib/memory/__stack_pointer
   i32.const 0
   i32.store offset=8
-  local.get $this
-  i32.eqz
-  if
-   global.get $~lib/memory/__stack_pointer
-   i32.const 24
-   i32.const 4
-   call $~lib/rt/itcms/__new
-   local.tee $this
-   i32.store
-  end
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
-  i32.store offset=4
-  local.get $2
-  local.get $sampleRate
-  call $as/assembly/delay/player/Player#set:sampleRate
-  local.get $this
-  local.set $2
+  i32.const 24
+  i32.const 4
+  call $~lib/rt/itcms/__new
+  local.tee $1
+  i32.store
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
+  local.get $1
+  local.get $0
+  i32.store offset=20
+  global.get $~lib/memory/__stack_pointer
+  local.get $1
+  i32.store offset=4
+  local.get $1
   i32.const 0
-  call $as/assembly/delay/player/Player#set:delayBufferL
-  local.get $this
-  local.set $2
+  call $~lib/rt/tlsf/Root#set:flMap
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
+  local.get $1
   i32.const 0
-  call $as/assembly/delay/player/Player#set:delayBufferR
-  local.get $this
-  local.set $2
+  call $~lib/rt/tlsf/Block#set:prev
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
+  local.get $1
   i32.const 0
   call $as/assembly/delay/player/Player#set:delayBufferSize
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
+  local.get $1
   i32.const 0
-  call $as/assembly/delay/player/Player#set:writePos
-  local.get $this
-  local.set $2
+  call $~lib/rt/itcms/Object#set:rtId
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
+  local.get $1
   f32.const 1
-  call $as/assembly/delay/player/Player#set:maxDelayTime
-  local.get $this
-  local.set $2
+  f32.store offset=16
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=8
-  local.get $2
-  call $as/assembly/delay/player/Player#get:sampleRate
+  local.get $1
+  i32.load offset=20
   f32.convert_i32_u
-  local.get $this
   local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=8
+  local.get $1
   local.get $2
-  call $as/assembly/delay/player/Player#get:maxDelayTime
+  local.get $1
+  f32.load offset=16
   f32.mul
   i32.trunc_sat_f32_u
   call $as/assembly/delay/player/Player#set:delayBufferSize
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=8
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.const 4
-  i32.mul
-  call $~lib/memory/heap.alloc
-  call $as/assembly/delay/player/Player#set:delayBufferL
-  local.get $this
-  local.set $2
+  local.get $1
+  local.get $1
+  i32.load offset=8
+  i32.const 2
+  i32.shl
+  call $~lib/rt/tlsf/__alloc
+  call $~lib/rt/tlsf/Root#set:flMap
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=8
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.const 4
-  i32.mul
-  call $~lib/memory/heap.alloc
-  call $as/assembly/delay/player/Player#set:delayBufferR
-  local.get $this
-  local.set $2
+  local.get $1
+  local.get $1
+  i32.load offset=8
+  i32.const 2
+  i32.shl
+  call $~lib/rt/tlsf/__alloc
+  call $~lib/rt/tlsf/Block#set:prev
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferL
+  local.get $1
+  i32.load
+  local.set $0
+  global.get $~lib/memory/__stack_pointer
+  local.get $1
+  i32.store offset=4
+  local.get $0
   i32.const 0
-  local.get $this
-  local.set $2
-  global.get $~lib/memory/__stack_pointer
-  local.get $2
-  i32.store offset=4
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.const 4
-  i32.mul
+  local.get $1
+  i32.load offset=8
+  i32.const 2
+  i32.shl
   memory.fill
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
   i32.store offset=4
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferR
+  local.get $1
+  i32.load offset=4
+  local.set $0
+  global.get $~lib/memory/__stack_pointer
+  local.get $1
+  i32.store offset=4
+  local.get $0
   i32.const 0
-  local.get $this
-  local.set $2
-  global.get $~lib/memory/__stack_pointer
-  local.get $2
-  i32.store offset=4
-  local.get $2
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.const 4
-  i32.mul
+  local.get $1
+  i32.load offset=8
+  i32.const 2
+  i32.shl
   memory.fill
-  local.get $this
-  local.set $2
   global.get $~lib/memory/__stack_pointer
   i32.const 12
   i32.add
   global.set $~lib/memory/__stack_pointer
-  local.get $2
+  local.get $1
  )
- (func $as/assembly/delay/player/Player#readDelayBuffer (param $this i32) (param $buffer i32) (param $delayInSamples f32) (result f32)
-  (local $delayInt i32)
-  (local $delayFrac f32)
-  (local $pos1 i32)
-  (local $pos0 i32)
-  (local $pos2 i32)
-  (local $pos3 i32)
-  (local $y0 f32)
-  (local $y1 f32)
-  (local $y2 f32)
-  (local $y3 f32)
-  (local $13 i32)
-  (local $14 f32)
+ (func $as/assembly/delay/player/Player#readDelayBuffer (param $0 i32) (param $1 i32) (param $2 f32) (result f32)
+  (local $3 f32)
+  (local $4 f32)
+  (local $5 f32)
+  (local $6 i32)
+  (local $7 i32)
+  (local $8 i32)
+  (local $9 i32)
+  (local $10 f32)
+  (local $11 f32)
   global.get $~lib/memory/__stack_pointer
   i32.const 4
   i32.sub
@@ -2668,155 +1651,149 @@
   global.get $~lib/memory/__stack_pointer
   i32.const 0
   i32.store
-  local.get $delayInSamples
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $0
+  i32.load offset=12
+  local.set $6
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $6
+  local.get $0
+  i32.load offset=8
+  i32.add
+  local.get $2
   i32.trunc_sat_f32_u
-  local.set $delayInt
-  local.get $delayInSamples
-  local.get $delayInt
+  local.tee $8
+  i32.sub
+  local.set $6
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $6
+  local.get $0
+  i32.load offset=8
+  i32.rem_u
+  local.set $6
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $6
+  local.get $0
+  i32.load offset=8
+  i32.add
+  i32.const 1
+  i32.sub
+  local.set $7
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $7
+  local.get $0
+  i32.load offset=8
+  i32.rem_u
+  local.set $7
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $6
+  i32.const 1
+  i32.add
+  local.get $0
+  i32.load offset=8
+  i32.rem_u
+  local.set $9
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $1
+  local.get $7
+  i32.const 2
+  i32.shl
+  i32.add
+  f32.load
+  local.set $3
+  local.get $1
+  local.get $6
+  i32.const 2
+  i32.shl
+  i32.add
+  f32.load
+  local.set $4
+  local.get $1
+  local.get $9
+  i32.const 2
+  i32.shl
+  i32.add
+  f32.load
+  local.set $5
+  local.get $1
+  local.get $6
+  i32.const 2
+  i32.add
+  local.get $0
+  i32.load offset=8
+  i32.rem_u
+  i32.const 2
+  i32.shl
+  i32.add
+  f32.load
+  local.set $10
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $2
+  local.get $8
   f32.convert_i32_u
   f32.sub
-  local.set $delayFrac
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:writePos
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.add
-  local.get $delayInt
-  i32.sub
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.rem_u
-  local.set $pos1
-  local.get $pos1
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.add
-  i32.const 1
-  i32.sub
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.rem_u
-  local.set $pos0
-  local.get $pos1
-  i32.const 1
-  i32.add
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.rem_u
-  local.set $pos2
-  local.get $pos1
-  i32.const 2
-  i32.add
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  call $as/assembly/delay/player/Player#get:delayBufferSize
-  i32.rem_u
-  local.set $pos3
-  local.get $buffer
-  local.get $pos0
-  i32.const 2
-  i32.shl
-  i32.add
-  f32.load
-  local.set $y0
-  local.get $buffer
-  local.get $pos1
-  i32.const 2
-  i32.shl
-  i32.add
-  f32.load
-  local.set $y1
-  local.get $buffer
-  local.get $pos2
-  i32.const 2
-  i32.shl
-  i32.add
-  f32.load
-  local.set $y2
-  local.get $buffer
-  local.get $pos3
-  i32.const 2
-  i32.shl
-  i32.add
-  f32.load
-  local.set $y3
-  local.get $this
-  local.set $13
-  global.get $~lib/memory/__stack_pointer
-  local.get $13
-  i32.store
-  local.get $13
-  local.get $y0
-  local.get $y1
-  local.get $y2
-  local.get $y3
-  local.get $delayFrac
-  call $as/assembly/delay/player/Player#cubicInterpolate
-  local.set $14
+  local.tee $2
+  local.get $2
+  f32.mul
+  local.set $11
   global.get $~lib/memory/__stack_pointer
   i32.const 4
   i32.add
   global.set $~lib/memory/__stack_pointer
-  local.get $14
-  return
+  local.get $10
+  local.get $5
+  f32.sub
+  local.get $3
+  f32.sub
+  local.get $4
+  f32.add
+  local.tee $10
+  local.get $2
+  f32.mul
+  local.get $11
+  f32.mul
+  local.get $3
+  local.get $4
+  f32.sub
+  local.get $10
+  f32.sub
+  local.get $11
+  f32.mul
+  f32.add
+  local.get $5
+  local.get $3
+  f32.sub
+  local.get $2
+  f32.mul
+  f32.add
+  local.get $4
+  f32.add
  )
- (func $as/assembly/delay/player/Player#process (param $this i32) (param $begin i32) (param $end i32) (param $input$ i32) (param $output$ i32) (param $delay f32) (param $feedback f32)
-  (local $input i32)
-  (local $output i32)
-  (local $input_L i32)
-  (local $input_R i32)
-  (local $output_L i32)
-  (local $output_R i32)
-  (local $delayInSamples f32)
-  (local $value1 f64)
-  (local $value2 f64)
-  (local $value1|16 f64)
-  (local $value2|17 f64)
-  (local $pos i32)
-  (local $offset i32)
-  (local $inputSampleL f32)
-  (local $inputSampleR f32)
-  (local $delayedSampleL f32)
-  (local $delayedSampleR f32)
-  (local $outputSampleL f32)
-  (local $outputSampleR f32)
-  (local $feedbackSampleL f32)
-  (local $feedbackSampleR f32)
-  (local $28 i32)
+ (func $as/assembly/delay/player/Player#process (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 f32) (param $6 f32)
+  (local $7 f32)
+  (local $8 f32)
+  (local $9 i32)
+  (local $10 f64)
+  (local $11 f32)
+  (local $12 i32)
+  (local $13 i32)
+  (local $14 f32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.sub
@@ -2825,218 +1802,169 @@
   global.get $~lib/memory/__stack_pointer
   i64.const 0
   i64.store
-  local.get $input$
-  local.set $input
-  local.get $output$
-  local.set $output
-  local.get $input
-  call $as/assembly/delay/shared/Out#get:L$
-  local.set $input_L
-  local.get $input
-  call $as/assembly/delay/shared/Out#get:R$
-  local.set $input_R
-  local.get $output
-  call $as/assembly/delay/shared/Out#get:L$
-  local.set $output_L
-  local.get $output
-  call $as/assembly/delay/shared/Out#get:R$
-  local.set $output_R
-  local.get $delay
-  local.get $this
-  local.set $28
+  local.get $3
+  i32.load
+  local.set $9
+  local.get $3
+  i32.load offset=4
+  local.set $12
+  local.get $4
+  i32.load
+  local.set $3
+  local.get $4
+  i32.load offset=4
+  local.set $4
   global.get $~lib/memory/__stack_pointer
-  local.get $28
+  local.get $0
   i32.store
-  local.get $28
-  call $as/assembly/delay/player/Player#get:sampleRate
+  local.get $5
+  local.get $0
+  i32.load offset=20
   f32.convert_i32_u
   f32.mul
-  local.set $delayInSamples
-  block $~lib/math/NativeMath.max|inlined.0 (result f64)
-   f64.const 1
-   local.set $value1|16
-   block $~lib/math/NativeMath.min|inlined.0 (result f64)
-    local.get $delayInSamples
-    f64.promote_f32
-    local.set $value1
-    local.get $this
-    local.set $28
-    global.get $~lib/memory/__stack_pointer
-    local.get $28
-    i32.store
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferSize
-    i32.const 4
-    i32.sub
-    f32.convert_i32_u
-    f64.promote_f32
-    local.set $value2
-    local.get $value1
-    local.get $value2
-    f64.min
-    br $~lib/math/NativeMath.min|inlined.0
-   end
-   local.set $value2|17
-   local.get $value1|16
-   local.get $value2|17
-   f64.max
-   br $~lib/math/NativeMath.max|inlined.0
-  end
+  f64.promote_f32
+  local.set $10
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
+  i32.store
+  local.get $10
+  local.get $0
+  i32.load offset=8
+  i32.const 4
+  i32.sub
+  f32.convert_i32_u
+  f64.promote_f32
+  f64.min
+  f64.const 1
+  f64.max
   f32.demote_f64
-  local.set $delayInSamples
-  local.get $begin
-  local.set $pos
+  local.set $11
   loop $for-loop|0
-   local.get $pos
-   local.get $end
+   local.get $1
+   local.get $2
    i32.lt_u
    if
-    local.get $pos
+    local.get $9
+    local.get $1
     i32.const 2
     i32.shl
-    local.set $offset
-    local.get $input_L
-    local.get $offset
+    local.tee $13
     i32.add
     f32.load
-    local.set $inputSampleL
-    local.get $input_R
-    local.get $offset
+    local.set $14
+    local.get $12
+    local.get $13
     i32.add
     f32.load
-    local.set $inputSampleR
-    local.get $this
-    local.set $28
+    local.set $5
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store offset=4
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferL
-    local.get $delayInSamples
+    local.get $0
+    local.get $0
+    i32.load
+    local.get $11
     call $as/assembly/delay/player/Player#readDelayBuffer
-    local.set $delayedSampleL
-    local.get $this
-    local.set $28
+    local.set $7
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store offset=4
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferR
-    local.get $delayInSamples
+    local.get $0
+    local.get $0
+    i32.load offset=4
+    local.get $11
     call $as/assembly/delay/player/Player#readDelayBuffer
-    local.set $delayedSampleR
-    local.get $inputSampleL
-    local.get $delayedSampleL
+    local.set $8
+    local.get $3
+    local.get $13
+    i32.add
+    local.get $14
+    local.get $7
     f32.const 0.5
     f32.mul
     f32.add
-    local.set $outputSampleL
-    local.get $inputSampleR
-    local.get $delayedSampleR
+    f32.store
+    local.get $4
+    local.get $13
+    i32.add
+    local.get $5
+    local.get $8
     f32.const 0.5
     f32.mul
     f32.add
-    local.set $outputSampleR
-    local.get $output_L
-    local.get $offset
-    i32.add
-    local.get $outputSampleL
     f32.store
-    local.get $output_R
-    local.get $offset
-    i32.add
-    local.get $outputSampleR
-    f32.store
-    local.get $inputSampleL
-    local.get $delayedSampleL
-    local.get $feedback
-    f32.mul
-    f32.add
-    local.set $feedbackSampleL
-    local.get $inputSampleR
-    local.get $delayedSampleR
-    local.get $feedback
-    f32.mul
-    f32.add
-    local.set $feedbackSampleR
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferL
-    local.get $this
-    local.set $28
+    local.get $0
+    i32.load
+    local.set $13
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    call $as/assembly/delay/player/Player#get:writePos
+    local.get $13
+    local.get $0
+    i32.load offset=12
     i32.const 2
     i32.shl
     i32.add
-    local.get $feedbackSampleL
+    local.get $14
+    local.get $7
+    local.get $6
+    f32.mul
+    f32.add
     f32.store
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferR
-    local.get $this
-    local.set $28
+    local.get $0
+    i32.load offset=4
+    local.set $13
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    call $as/assembly/delay/player/Player#get:writePos
+    local.get $13
+    local.get $0
+    i32.load offset=12
     i32.const 2
     i32.shl
     i32.add
-    local.get $feedbackSampleR
+    local.get $5
+    local.get $8
+    local.get $6
+    f32.mul
+    f32.add
     f32.store
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store
-    local.get $28
-    local.get $this
-    local.set $28
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store offset=4
-    local.get $28
-    call $as/assembly/delay/player/Player#get:writePos
+    local.get $0
+    i32.load offset=12
     i32.const 1
     i32.add
-    local.get $this
-    local.set $28
+    local.set $13
     global.get $~lib/memory/__stack_pointer
-    local.get $28
+    local.get $0
     i32.store offset=4
-    local.get $28
-    call $as/assembly/delay/player/Player#get:delayBufferSize
+    local.get $0
+    local.get $13
+    local.get $0
+    i32.load offset=8
     i32.rem_u
-    call $as/assembly/delay/player/Player#set:writePos
-    local.get $pos
+    call $~lib/rt/itcms/Object#set:rtId
+    local.get $1
     i32.const 1
     i32.add
-    local.set $pos
+    local.set $1
     br $for-loop|0
    end
   end
@@ -3045,9 +1973,7 @@
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $as/assembly/delay/index/playerProcess (param $player$ i32) (param $begin i32) (param $end i32) (param $input$ i32) (param $output$ i32) (param $delay f32) (param $feedback f32)
-  (local $player i32)
-  (local $8 i32)
+ (func $as/assembly/delay/index/playerProcess (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 f32) (param $6 f32)
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.sub
@@ -3057,31 +1983,25 @@
   i64.const 0
   i64.store
   global.get $~lib/memory/__stack_pointer
-  local.get $player$
-  local.tee $player
+  local.get $0
   i32.store
-  local.get $player
-  local.set $8
   global.get $~lib/memory/__stack_pointer
-  local.get $8
+  local.get $0
   i32.store offset=4
-  local.get $8
-  local.get $begin
-  local.get $end
-  local.get $input$
-  local.get $output$
-  local.get $delay
-  local.get $feedback
+  local.get $0
+  local.get $1
+  local.get $2
+  local.get $3
+  local.get $4
+  local.get $5
+  local.get $6
   call $as/assembly/delay/player/Player#process
   global.get $~lib/memory/__stack_pointer
   i32.const 8
   i32.add
   global.set $~lib/memory/__stack_pointer
  )
- (func $~lib/staticarray/StaticArray<i32>#constructor (param $this i32) (param $length i32) (result i32)
-  (local $outSize i32)
-  (local $out i32)
-  (local $4 i32)
+ (func $byn$mgfn-shared$as/assembly/alloc/allocI32 (param $0 i32) (param $1 i32) (result i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 4
   i32.sub
@@ -3090,136 +2010,29 @@
   global.get $~lib/memory/__stack_pointer
   i32.const 0
   i32.store
-  local.get $length
-  i32.const 1073741820
-  i32.const 2
-  i32.shr_u
+  local.get $0
+  i32.const 268435455
   i32.gt_u
   if
-   i32.const 432
-   i32.const 480
+   i32.const 1456
+   i32.const 1504
    i32.const 51
    i32.const 60
    call $~lib/builtins/abort
    unreachable
   end
-  local.get $length
+  global.get $~lib/memory/__stack_pointer
+  local.get $0
   i32.const 2
   i32.shl
-  local.set $outSize
-  global.get $~lib/memory/__stack_pointer
-  local.get $outSize
-  i32.const 5
+  local.get $1
   call $~lib/rt/itcms/__new
-  local.tee $out
+  local.tee $0
   i32.store
-  i32.const 2
-  global.get $~lib/shared/runtime/Runtime.Incremental
-  i32.ne
-  drop
-  local.get $out
-  local.set $4
   global.get $~lib/memory/__stack_pointer
   i32.const 4
   i32.add
   global.set $~lib/memory/__stack_pointer
-  local.get $4
-  return
- )
- (func $~lib/staticarray/StaticArray<u32>#constructor (param $this i32) (param $length i32) (result i32)
-  (local $outSize i32)
-  (local $out i32)
-  (local $4 i32)
-  global.get $~lib/memory/__stack_pointer
-  i32.const 4
-  i32.sub
-  global.set $~lib/memory/__stack_pointer
-  call $~stack_check
-  global.get $~lib/memory/__stack_pointer
-  i32.const 0
-  i32.store
-  local.get $length
-  i32.const 1073741820
-  i32.const 2
-  i32.shr_u
-  i32.gt_u
-  if
-   i32.const 432
-   i32.const 480
-   i32.const 51
-   i32.const 60
-   call $~lib/builtins/abort
-   unreachable
-  end
-  local.get $length
-  i32.const 2
-  i32.shl
-  local.set $outSize
-  global.get $~lib/memory/__stack_pointer
-  local.get $outSize
-  i32.const 6
-  call $~lib/rt/itcms/__new
-  local.tee $out
-  i32.store
-  i32.const 2
-  global.get $~lib/shared/runtime/Runtime.Incremental
-  i32.ne
-  drop
-  local.get $out
-  local.set $4
-  global.get $~lib/memory/__stack_pointer
-  i32.const 4
-  i32.add
-  global.set $~lib/memory/__stack_pointer
-  local.get $4
-  return
- )
- (func $~lib/staticarray/StaticArray<f32>#constructor (param $this i32) (param $length i32) (result i32)
-  (local $outSize i32)
-  (local $out i32)
-  (local $4 i32)
-  global.get $~lib/memory/__stack_pointer
-  i32.const 4
-  i32.sub
-  global.set $~lib/memory/__stack_pointer
-  call $~stack_check
-  global.get $~lib/memory/__stack_pointer
-  i32.const 0
-  i32.store
-  local.get $length
-  i32.const 1073741820
-  i32.const 2
-  i32.shr_u
-  i32.gt_u
-  if
-   i32.const 432
-   i32.const 480
-   i32.const 51
-   i32.const 60
-   call $~lib/builtins/abort
-   unreachable
-  end
-  local.get $length
-  i32.const 2
-  i32.shl
-  local.set $outSize
-  global.get $~lib/memory/__stack_pointer
-  local.get $outSize
-  i32.const 7
-  call $~lib/rt/itcms/__new
-  local.tee $out
-  i32.store
-  i32.const 2
-  global.get $~lib/shared/runtime/Runtime.Incremental
-  i32.ne
-  drop
-  local.get $out
-  local.set $4
-  global.get $~lib/memory/__stack_pointer
-  i32.const 4
-  i32.add
-  global.set $~lib/memory/__stack_pointer
-  local.get $4
-  return
+  local.get $0
  )
 )
