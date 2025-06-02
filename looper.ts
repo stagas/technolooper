@@ -143,11 +143,81 @@ function getCellParameters(cellIndex: number): CellParameters {
 function setCellParameter(cellIndex: number, parameter: keyof CellParameters, value: number): void {
   initializeCellParameters(cellIndex)
   const params = cellParameters.get(cellIndex)!
+  const oldValue = params[parameter]
+
+  // Apply safety caps for specific parameters
+  if (parameter === 'delayFeedback') {
+    value = Math.min(0.90, Math.max(0, value)) // Cap feedback at 0.90
+  } else if (parameter === 'volume') {
+    value = Math.min(1, Math.max(0, value)) // Cap volume at 1.0
+  } else if (parameter === 'delayWet') {
+    value = Math.min(1, Math.max(0, value)) // Cap wet at 1.0
+  }
+
   params[parameter] = value
+
+  // Handle pooled node assignment/release for delay
+  if (parameter === 'delayWet') {
+    if (oldValue === 0 && value > 0) {
+      // Starting to use delay - try to assign a node
+      const assignedNode = nodePool.assignDelayNode(cellIndex)
+      if (!assignedNode) {
+        // No nodes available, reset parameter
+        params[parameter] = 0
+        console.warn(`No delay nodes available for cell ${cellIndex}`)
+        return
+      }
+    }
+
+    else if (oldValue > 0 && value === 0) {
+      // Stopping delay use - release the node
+      nodePool.releaseDelayNode(cellIndex)
+    }
+  }
+
+  // Handle pooled node assignment/release for filter
+  if (parameter === 'filter') {
+    if (oldValue === 0 && value !== 0) {
+      // Starting to use filter - try to assign a node
+      const assignedNode = nodePool.assignFilterNode(cellIndex)
+      if (!assignedNode) {
+        // No nodes available, reset parameter
+        params[parameter] = 0
+        console.warn(`No filter nodes available for cell ${cellIndex}`)
+        return
+      }
+    }
+
+    else if (oldValue !== 0 && value === 0) {
+      // Stopping filter use - release the node
+      nodePool.releaseFilterNode(cellIndex)
+    }
+  }
 
   // Update audio if this cell is currently playing
   if (audioScheduler.isAudioInitialized() && gridCells[cellIndex]?.isActive) {
-    audioScheduler.updateCellParameter(cellIndex, parameter, value)
+    // If we're changing delay/filter and need to restart with new nodes
+    if ((parameter === 'delayWet' && ((oldValue === 0) !== (value === 0))) ||
+      (parameter === 'filter' && ((oldValue === 0) !== (value === 0)))) {
+      // Restart the stem to reconnect with new pooled nodes
+      const stem = gridCells[cellIndex].stem
+      if (stem) {
+        audioScheduler.removeStem(cellIndex)
+        audioScheduler.addStem(cellIndex, stem)
+      }
+    }
+
+    else {
+      audioScheduler.updateCellParameter(cellIndex, parameter, value)
+    }
+  }
+
+  // Update visuals to show new pool assignments
+  updateCellVisual(cellIndex)
+
+  // Update controls availability when pool state changes
+  if (parameter === 'delayWet' || parameter === 'filter') {
+    updateControlsAvailability()
   }
 }
 
@@ -754,7 +824,23 @@ function toggleCell(index: number): void {
 
   // Normal toggle behavior
   if (gridCells[index].stem) {
+    const wasActive = gridCells[index].isActive
     gridCells[index].isActive = !gridCells[index].isActive
+
+    // If cell became inactive, release any pooled nodes
+    if (wasActive && !gridCells[index].isActive) {
+      const params = getCellParameters(index)
+      if (params.delayWet > 0) {
+        nodePool.releaseDelayNode(index)
+        params.delayWet = 0
+      }
+      if (params.filter !== 0) {
+        nodePool.releaseFilterNode(index)
+        params.filter = 0
+      }
+      updateControlsAvailability()
+    }
+
     updateCellVisual(index)
     triggerCellsUpdateCallback()
   }
@@ -806,6 +892,80 @@ function updateCellVisual(index: number): void {
   // Get HSL color from StemColors [hue, saturation, lightness]
   const [hue, saturation, lightness] = StemColors[stem.kind] || [0, 0, 50]
 
+  // Create content container
+  const contentDiv = document.createElement('div')
+  contentDiv.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 4px;
+    box-sizing: border-box;
+  `
+
+  // Add pool indicators if active
+  if (isActive) {
+    const params = getCellParameters(index)
+    const indicators: string[] = []
+
+    // Check for active delay
+    if (params.delayWet > 0) {
+      const delayIndex = nodePool.getDelayNodeIndex(index)
+      if (delayIndex > 0) {
+        indicators.push(`D${delayIndex}`)
+      }
+    }
+
+    // Check for active filter
+    if (params.filter !== 0) {
+      const filterIndex = nodePool.getFilterNodeIndex(index)
+      if (filterIndex > 0) {
+        indicators.push(`F${filterIndex}`)
+      }
+    }
+
+    // Check for non-default loop fraction
+    if (params.loopFraction < 1) {
+      if (params.loopFraction === 0.5) {
+        indicators.push('L½')
+      } else if (params.loopFraction === 0.25) {
+        indicators.push('L¼')
+      } else if (params.loopFraction === 0.125) {
+        indicators.push('L⅛')
+      } else if (params.loopFraction === 0.0625) {
+        indicators.push('L1/16')
+      } else {
+        indicators.push('L*')
+      }
+    }
+
+    // Check for non-default volume
+    if (Math.abs(params.volume - 1) > 0.01) {
+      const volumePercent = Math.round(params.volume * 100)
+      indicators.push(`V${volumePercent}`)
+    }
+
+    if (indicators.length > 0) {
+      const indicatorDiv = document.createElement('div')
+      indicatorDiv.textContent = indicators.join(' ')
+      indicatorDiv.style.cssText = `
+        font-size: 0.5rem;
+        font-weight: bold;
+        text-align: center;
+        color: white;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1px 4px;
+        border-radius: 2px;
+        margin-top: 2px;
+      `
+      contentDiv.appendChild(indicatorDiv)
+    }
+  }
+
+  cell.appendChild(contentDiv)
+
   if (isActive) {
     // Show active state
     cell.classList.add('active')
@@ -814,17 +974,71 @@ function updateCellVisual(index: number): void {
       // Active but still loading - use grayscale (saturation 0)
       cell.style.backgroundColor = `hsl(${hue}, 15%, ${lightness}%)`
       cell.style.boxShadow = `0 0 25px hsl(${hue}, 15%, ${lightness}%, 0.6), 0 0 50px hsl(${hue}, 0%, ${lightness}%, 0.6)`
-    } else {
+    }
+
+    else {
       // Active and loaded - use full color
       cell.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`
       cell.style.boxShadow = `0 0 25px hsl(${hue}, ${saturation}%, ${lightness}%, 0.6), 0 0 50px hsl(${hue}, ${saturation}%, ${lightness}%, 0.6)`
     }
-  } else {
-    // Inactive state
+  }
+
+  else {
+    // Inactive state - but still show indicators for modified parameters
+    const params = getCellParameters(index)
+    const indicators: string[] = []
+
+    // Check for non-default parameters on inactive cells
+    if (params.loopFraction < 1) {
+      if (params.loopFraction === 0.5) {
+        indicators.push('L½')
+      } else if (params.loopFraction === 0.25) {
+        indicators.push('L¼')
+      } else if (params.loopFraction === 0.125) {
+        indicators.push('L⅛')
+      } else if (params.loopFraction === 0.0625) {
+        indicators.push('L1/16')
+      } else {
+        indicators.push('L*')
+      }
+    }
+
+    if (Math.abs(params.volume - 1) > 0.01) {
+      const volumePercent = Math.round(params.volume * 100)
+      indicators.push(`V${volumePercent}`)
+    }
+
+    if (params.filter !== 0) {
+      indicators.push('F*')
+    }
+
+    if (params.delayWet > 0) {
+      indicators.push('D*')
+    }
+
+    if (indicators.length > 0) {
+      const indicatorDiv = document.createElement('div')
+      indicatorDiv.textContent = indicators.join(' ')
+      indicatorDiv.style.cssText = `
+        font-size: 0.45rem;
+        font-weight: bold;
+        text-align: center;
+        color: #aaa;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 1px 3px;
+        border-radius: 2px;
+        margin-top: 2px;
+        opacity: 0.8;
+      `
+      contentDiv.appendChild(indicatorDiv)
+    }
+
     if (isLoading) {
       // Loading but inactive - grayscale with low opacity
       cell.style.backgroundColor = `hsl(${hue}, 15%, ${lightness}%, 0.3)`
-    } else {
+    }
+
+    else {
       // Normal inactive state - dimmed color
       cell.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%, 0.25)`
     }
@@ -962,33 +1176,18 @@ function setupEventListeners(): void {
     })
   }
 
-  // Delay time slider
-  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
-  if (delayTimeSlider) {
-    delayTimeSlider.addEventListener('input', (e) => {
-      const value = parseFloat((e.target as HTMLInputElement).value)
-      // When delayTimeSlider changes, it directly calls handleDelayTimeChange
-      handleDelayTimeChange(value)
+  // Delay navigation buttons
+  const delayNavPrev = document.getElementById('delayNavPrev')
+  if (delayNavPrev) {
+    delayNavPrev.addEventListener('click', () => {
+      navigateDelayPreset('prev')
     })
   }
 
-  // Delay Wet slider
-  const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
-  if (delayWetSlider) {
-    delayWetSlider.addEventListener('input', (e) => {
-      const value = parseFloat((e.target as HTMLInputElement).value)
-      // When delayWetSlider changes, it calls handleDelayWetChange
-      handleDelayWetChange(value)
-    })
-  }
-
-  // Delay Feedback slider
-  const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
-  if (delayFeedbackSlider) {
-    delayFeedbackSlider.addEventListener('input', (e) => {
-      const value = parseFloat((e.target as HTMLInputElement).value)
-      // When delayFeedbackSlider changes, it calls handleDelayFeedbackChange
-      handleDelayFeedbackChange(value)
+  const delayNavNext = document.getElementById('delayNavNext')
+  if (delayNavNext) {
+    delayNavNext.addEventListener('click', () => {
+      navigateDelayPreset('next')
     })
   }
 }
@@ -1010,7 +1209,9 @@ function setupControlRowEventListeners(): void {
       if (controlState.mode === 'cellSelection' && controlState.isActive) {
         console.log(`🔄 Click #${clickCount}: Returning to initial state from cell selection`)
         returnToInitialControlState()
-      } else {
+      }
+
+      else {
         console.log(`🔄 Click #${clickCount}: Entering cell selection mode`)
         enterCellSelectionMode()
       }
@@ -1026,8 +1227,62 @@ function setupControlRowEventListeners(): void {
         console.log(`───────────────────────────────────────`)
       }, 10)
     })
-  } else {
+  }
+
+  else {
     console.error('❌ Control button not found during setup!')
+  }
+
+  // Reset All button
+  const resetAllBtn = document.getElementById('resetAllBtn')
+  if (resetAllBtn) {
+    resetAllBtn.addEventListener('click', () => {
+      console.log('🔄 Reset All button clicked')
+
+      // Track cells that need to be restarted
+      const cellsToRestart: number[] = []
+
+      // Reset all cell parameters to defaults
+      cellParameters.forEach((params, cellIndex) => {
+        let needsRestart = false
+
+        // Check if cell has any non-default parameters
+        if (params.delayWet > 0 || params.filter !== 0 ||
+          params.loopFraction !== 1 || Math.abs(params.volume - 1) > 0.01) {
+          cellsToRestart.push(cellIndex)
+          needsRestart = true
+        }
+
+        // Reset all parameters to defaults
+        params.loopFraction = 1
+        params.volume = 1
+        params.filter = 0
+        params.delayWet = 0
+        params.delayTime = 0
+        params.delayFeedback = 0.3
+      })
+
+      // Release all pooled nodes
+      nodePool.releaseAllNodes()
+
+      // Restart affected stems that are currently active to apply new parameters
+      cellsToRestart.forEach(cellIndex => {
+        const cell = gridCells[cellIndex]
+        if (cell && cell.isActive && cell.stem && audioScheduler.isAudioInitialized()) {
+          // Remove and re-add the stem to apply reset parameters
+          audioScheduler.removeStem(cellIndex)
+          audioScheduler.addStem(cellIndex, cell.stem)
+        }
+      })
+
+      // Update all cell visuals to remove indicators
+      updateCellVisuals()
+
+      // Update controls availability
+      updateControlsAvailability()
+
+      console.log(`✅ All parameters reset for ${cellsToRestart.length} cells`)
+    })
   }
 
   // Return buttons
@@ -1062,7 +1317,18 @@ function setupControlRowEventListeners(): void {
   const filterBtn = document.getElementById('filterBtn')
   if (filterBtn) {
     filterBtn.addEventListener('click', () => {
-      enterParameterControl('filter', 'Filter', 'Hz')
+      if (nodePool.getAvailableFilterCount() > 0) {
+        enterParameterControl('filter', 'Filter', 'Hz')
+      }
+
+      else {
+        console.warn('No filter nodes available')
+        // Visual feedback - briefly flash the button
+        filterBtn.style.backgroundColor = '#ff6b6b'
+        setTimeout(() => {
+          filterBtn.style.backgroundColor = ''
+        }, 200)
+      }
     })
   }
 
@@ -1070,7 +1336,18 @@ function setupControlRowEventListeners(): void {
   const delayBtn = document.getElementById('delayBtn')
   if (delayBtn) {
     delayBtn.addEventListener('click', () => {
-      enterParameterControl('delay', 'Delay Settings', '') // New parameter type 'delay'
+      if (nodePool.getAvailableDelayCount() > 0) {
+        enterParameterControl('delay', 'Delay Settings', '') // New parameter type 'delay'
+      }
+
+      else {
+        console.warn('No delay nodes available')
+        // Visual feedback - briefly flash the button
+        delayBtn.style.backgroundColor = '#ff6b6b'
+        setTimeout(() => {
+          delayBtn.style.backgroundColor = ''
+        }, 200)
+      }
     })
   }
 
@@ -1083,7 +1360,47 @@ function setupControlRowEventListeners(): void {
     })
   }
 
-  // Removed duplicate delayTimeSlider setup - it's handled in setupControlRowEventListeners()
+  // Delay time slider
+  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
+  if (delayTimeSlider) {
+    delayTimeSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      handleDelayTimeChange(value)
+    })
+  }
+
+  // Delay Wet slider
+  const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
+  if (delayWetSlider) {
+    delayWetSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      handleDelayWetChange(value)
+    })
+  }
+
+  // Delay Feedback slider
+  const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
+  if (delayFeedbackSlider) {
+    delayFeedbackSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value)
+      handleDelayFeedbackChange(value)
+    })
+  }
+
+  // Delay navigation buttons
+  const delayNavPrev = document.getElementById('delayNavPrev')
+  if (delayNavPrev) {
+    delayNavPrev.addEventListener('click', () => {
+      navigateDelayPreset('prev')
+    })
+  }
+
+  const delayNavNext = document.getElementById('delayNavNext')
+  if (delayNavNext) {
+    delayNavNext.addEventListener('click', () => {
+      navigateDelayPreset('next')
+    })
+  }
 }
 
 // Control state management functions
@@ -1158,6 +1475,18 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
     controlState.currentParameter = 'delay' // Keep top-level parameter as 'delay'
 
     const cellParams = getCellParameters(controlState.controlledCellIndex)
+
+    // Initialize with current preset index based on current settings
+    // Find the closest preset or default to 'Off' (index 0)
+    currentDelayPresetIndex = 0 // Start with 'Off' preset
+    for (let i = 0; i < delayPresets.length; i++) {
+      const preset = delayPresets[i]
+      if (Math.abs(preset.wet - cellParams.delayWet) < 0.05 &&
+        Math.abs(preset.feedback - cellParams.delayFeedback) < 0.05) {
+        currentDelayPresetIndex = i
+        break
+      }
+    }
 
     // Setup Delay Wet
     const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
@@ -1239,7 +1568,7 @@ function enterParameterControl(parameter: string, label: string, unit: string): 
           break
         case 'delayFeedback': // New case for feedback
           parameterSlider.min = '0'
-          parameterSlider.max = '100'
+          parameterSlider.max = '90' // Cap at 90% to ensure max 0.90 value
           currentValue = Math.round(currentValue * 100)
           parameterSlider.value = currentValue.toString()
           sliderParameterValue.textContent = `${currentValue}%`
@@ -1350,18 +1679,17 @@ function handleDelayWetChange(sliderValue: number): void {
 function handleDelayFeedbackChange(sliderValue: number): void {
   if (controlState.controlledCellIndex === null) return
 
-  const actualValue = sliderValue / 100 // Convert percentage to 0-0.95 range (max feedback 0.95)
-  // The worklet caps at 0.95, so slider 0-100 maps to 0-1, then capped by worklet
-  // Or, for more precision at high values, map 0-100 to 0-0.95 directly:
-  // const actualValue = (sliderValue / 100) * 0.95;
+  // Cap feedback at 90% on slider (0-90 range) to ensure max 0.90 value
+  const cappedSliderValue = Math.min(90, Math.max(0, sliderValue))
+  const actualValue = cappedSliderValue / 100 // Convert percentage to 0-0.90 range
 
-  // Update parameter value
+  // Update parameter value with capped value
   setCellParameter(controlState.controlledCellIndex, 'delayFeedback', actualValue)
 
   // Update display for delayFeedbackSlider
   const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
   if (delayFeedbackParameterValue) {
-    delayFeedbackParameterValue.textContent = `${sliderValue}%`
+    delayFeedbackParameterValue.textContent = `${cappedSliderValue}%`
   }
 }
 
@@ -1407,8 +1735,9 @@ function handleParameterChange(sliderValue: number): void {
       unit = ''
       break
     case 'delayFeedback': // New case for feedback
-      actualValue = sliderValue / 100 // Convert percentage to 0-0.95 range (max feedback 0.95)
-      displayValue = sliderValue
+      actualValue = sliderValue / 100 // Convert percentage to 0-0.90 range
+      actualValue = Math.min(0.90, actualValue) // Ensure never exceeds 0.90
+      displayValue = Math.round(actualValue * 100)
       unit = '%'
       displayText = `${displayValue}${unit}`
       break
@@ -1548,6 +1877,9 @@ function showInitialControls(): void {
   if (initialControls) initialControls.style.display = 'flex'
   if (cellSelectedControls) cellSelectedControls.style.display = 'none'
   if (parameterControl) parameterControl.style.display = 'none'
+
+  // Update control availability when returning to initial state
+  updateControlsAvailability()
 }
 
 function showCellSelectedControls(): void {
@@ -1558,6 +1890,9 @@ function showCellSelectedControls(): void {
   if (initialControls) initialControls.style.display = 'none'
   if (cellSelectedControls) cellSelectedControls.style.display = 'flex'
   if (parameterControl) parameterControl.style.display = 'none'
+
+  // Update control availability when showing cell controls
+  updateControlsAvailability()
 }
 
 // Export functions for potential external use
@@ -1750,8 +2085,15 @@ class AudioScheduler {
       testDelay.node.disconnect()
       console.log('DelayNode worklet ready')
 
+      // Initialize node pools
+      await nodePool.initialize(this.audioContext)
+
       this.updateBarDuration()
       this.isInitialized = true
+
+      // Update control availability once pools are ready
+      updateControlsAvailability()
+
       console.log('Audio scheduler initialized')
     } catch (error) {
       console.error('Failed to initialize audio:', error)
@@ -1843,8 +2185,8 @@ class AudioScheduler {
   }
 
   async addStem(cellIndex: number, stem: Stem): Promise<void> {
-    if (!this.audioContext || !this.masterGainNode || !stem.buffer || !this.isDelayReady) {
-      console.warn('Cannot add stem: audio context, master gain, stem buffer, or delay worklet not ready')
+    if (!this.audioContext || !this.masterGainNode || !stem.buffer) {
+      console.warn('Cannot add stem: audio context, master gain, or stem buffer not ready')
       return
     }
 
@@ -1866,53 +2208,69 @@ class AudioScheduler {
       const gainNode = this.audioContext.createGain()
       gainNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start silent
 
-      // Create filter node for frequency filtering
-      const filterNode = this.audioContext.createBiquadFilter()
-      filterNode.type = 'allpass' // Start with no filtering
-      filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime) // Default frequency
+      // Get cell parameters to check if we need delay/filter
+      const params = getCellParameters(cellIndex)
 
-      // Create a new DelayNode instance (worklet already registered)
-      const delayResult = await Delay(this.audioContext)
-      const delayNode = delayResult.node
-      const delayParams = { delay: delayResult.delay, feedback: delayResult.feedback }
+      // Try to get pooled nodes if they're needed
+      let pooledDelayNode: PooledDelayNode | null = null
+      let pooledFilterNode: PooledFilterNode | null = null
 
-      // Create wet/dry mix nodes
-      const delayWetNode = this.audioContext.createGain()
-      const delayDryNode = this.audioContext.createGain()
-      delayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start with no wet signal
-      delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry signal
+      if (params.delayWet > 0) {
+        pooledDelayNode = nodePool.assignDelayNode(cellIndex)
+        if (!pooledDelayNode) {
+          console.warn(`No available delay nodes for cell ${cellIndex}`)
+        }
+      }
 
-      // Connect delay chain:
-      // source -> delayDryNode (dry path) -> filterNode
-      // source -> delayNode (WET signal from worklet) -> delayWetNode -> filterNode
+      if (params.filter !== 0) {
+        pooledFilterNode = nodePool.assignFilterNode(cellIndex)
+        if (!pooledFilterNode) {
+          console.warn(`No available filter nodes for cell ${cellIndex}`)
+        }
+      }
 
-      source.connect(delayDryNode)
-      source.connect(delayNode) // Input to delay worklet
-      delayNode.connect(delayWetNode) // Output from delay worklet (wet signal)
+      // Set up audio chain
+      let audioChainEnd: AudioNode = source
 
-      // Mix wet and dry signals into filter node
-      delayDryNode.connect(filterNode)
-      delayWetNode.connect(filterNode)
+      // Add delay if available
+      if (pooledDelayNode) {
+        // Connect source to both dry and delay paths
+        source.connect(pooledDelayNode.delayDryNode)
+        source.connect(pooledDelayNode.delayNode)
+        pooledDelayNode.delayNode.connect(pooledDelayNode.delayWetNode)
 
-      // Connect: source -> delay(wet+dry) -> filterNode -> gainNode -> masterGain -> destination
-      filterNode.connect(gainNode)
+        // Create a mixer for wet/dry signals
+        const mixerNode = this.audioContext.createGain()
+        pooledDelayNode.delayDryNode.connect(mixerNode)
+        pooledDelayNode.delayWetNode.connect(mixerNode)
+
+        audioChainEnd = mixerNode
+      }
+
+      // Add filter if available
+      if (pooledFilterNode) {
+        audioChainEnd.connect(pooledFilterNode.filterNode)
+        audioChainEnd = pooledFilterNode.filterNode
+      }
+
+      // Connect final output to gain node
+      audioChainEnd.connect(gainNode)
       gainNode.connect(this.masterGainNode)
 
-      // Store reference
+      // Store reference with pooled nodes
       this.activeSources.set(cellIndex, {
         source,
         gainNode,
-        filterNode,
-        delayNode,
-        delayParams,
-        delayWetNode,
-        delayDryNode,
+        filterNode: pooledFilterNode?.filterNode || this.audioContext.createBiquadFilter(), // Fallback for compatibility
+        delayNode: pooledDelayNode?.delayNode || null as any, // Will be null if no pooled node
+        delayParams: pooledDelayNode?.delayParams || { delay: undefined, feedback: undefined },
+        delayWetNode: pooledDelayNode?.delayWetNode || this.audioContext.createGain(),
+        delayDryNode: pooledDelayNode?.delayDryNode || this.audioContext.createGain(),
         stem,
         currentLoopFraction: 1
       })
 
       // Apply cell parameters
-      const params = getCellParameters(cellIndex)
       this.applyCellParameters(cellIndex, params)
 
       // Calculate when to start based on bar alignment
@@ -1922,7 +2280,9 @@ class AudioScheduler {
         startTime = this.getNextBarStartTime()
         const timeToNext = startTime - this.audioContext.currentTime
         console.log(`Scheduling "${stem.name}" to start in ${timeToNext.toFixed(2)}s at next bar`)
-      } else {
+      }
+
+      else {
         // Start immediately if not playing
         startTime = this.audioContext.currentTime
       }
@@ -2139,6 +2499,10 @@ class AudioScheduler {
 
     this.stopSource(cellIndex, sourceInfo)
     this.activeSources.delete(cellIndex)
+
+    // Release pooled nodes
+    nodePool.releaseDelayNode(cellIndex)
+    nodePool.releaseFilterNode(cellIndex)
 
     console.log(`Removed stem: ${sourceInfo.stem.name}`)
   }
@@ -2384,4 +2748,422 @@ export const looper = {
 
   // Audio overlay management
   updateLoadingStatus,
+
+  // Node pool management
+  getNodePool: () => nodePool,
+
+  updateControlsAvailability: () => updateControlsAvailability(),
+
+  // Debug helper for testing pool system
+  debugPools: () => {
+    const delayAvailable = nodePool.getAvailableDelayCount()
+    const filterAvailable = nodePool.getAvailableFilterCount()
+    console.log(`Pool Status: Delay ${delayAvailable}/8 available, Filter ${filterAvailable}/8 available`)
+
+    // Show which cells are using pooled nodes
+    for (let i = 0; i < gridCells.length; i++) {
+      const params = getCellParameters(i)
+      if (params.delayWet > 0) {
+        const delayIndex = nodePool.getDelayNodeIndex(i)
+        console.log(`Cell ${i}: Using delay node ${delayIndex}`)
+      }
+      if (params.filter !== 0) {
+        const filterIndex = nodePool.getFilterNodeIndex(i)
+        console.log(`Cell ${i}: Using filter node ${filterIndex}`)
+      }
+    }
+
+    return { delayAvailable, filterAvailable }
+  },
+}
+
+// Audio Node Pools System
+interface PooledDelayNode {
+  delayNode: AudioWorkletNode
+  delayParams: { delay: AudioParam | undefined; feedback: AudioParam | undefined }
+  delayWetNode: GainNode
+  delayDryNode: GainNode
+  isAvailable: boolean
+  assignedCellIndex: number | null
+}
+
+interface PooledFilterNode {
+  filterNode: BiquadFilterNode
+  isAvailable: boolean
+  assignedCellIndex: number | null
+}
+
+class NodePool {
+  private delayPool: PooledDelayNode[] = []
+  private filterPool: PooledFilterNode[] = []
+  private audioContext: AudioContext | null = null
+
+  async initialize(audioContext: AudioContext): Promise<void> {
+    this.audioContext = audioContext
+
+    // Initialize delay pool (8 nodes)
+    for (let i = 0; i < 8; i++) {
+      const delayResult = await Delay(audioContext)
+      const delayWetNode = audioContext.createGain()
+      const delayDryNode = audioContext.createGain()
+
+      delayWetNode.gain.setValueAtTime(0, audioContext.currentTime)
+      delayDryNode.gain.setValueAtTime(1, audioContext.currentTime)
+
+      this.delayPool.push({
+        delayNode: delayResult.node,
+        delayParams: { delay: delayResult.delay, feedback: delayResult.feedback },
+        delayWetNode,
+        delayDryNode,
+        isAvailable: true,
+        assignedCellIndex: null
+      })
+    }
+
+    // Initialize filter pool (8 nodes)
+    for (let i = 0; i < 8; i++) {
+      const filterNode = audioContext.createBiquadFilter()
+      filterNode.type = 'allpass'
+      filterNode.frequency.setValueAtTime(1000, audioContext.currentTime)
+
+      this.filterPool.push({
+        filterNode,
+        isAvailable: true,
+        assignedCellIndex: null
+      })
+    }
+
+    console.log('Node pools initialized: 8 delay nodes, 8 filter nodes')
+  }
+
+  assignDelayNode(cellIndex: number): PooledDelayNode | null {
+    const availableNode = this.delayPool.find(node => node.isAvailable)
+    if (availableNode) {
+      availableNode.isAvailable = false
+      availableNode.assignedCellIndex = cellIndex
+      return availableNode
+    }
+    return null
+  }
+
+  assignFilterNode(cellIndex: number): PooledFilterNode | null {
+    const availableNode = this.filterPool.find(node => node.isAvailable)
+    if (availableNode) {
+      availableNode.isAvailable = false
+      availableNode.assignedCellIndex = cellIndex
+      return availableNode
+    }
+    return null
+  }
+
+  releaseDelayNode(cellIndex: number): void {
+    const node = this.delayPool.find(node => node.assignedCellIndex === cellIndex)
+    if (node && this.audioContext) {
+      // Reset delay parameters
+      if (node.delayParams.delay) {
+        node.delayParams.delay.setValueAtTime(0, this.audioContext.currentTime)
+      }
+      if (node.delayParams.feedback) {
+        node.delayParams.feedback.setValueAtTime(0, this.audioContext.currentTime)
+      }
+      node.delayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime)
+      node.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
+
+      // Disconnect all connections
+      node.delayNode.disconnect()
+      node.delayWetNode.disconnect()
+      node.delayDryNode.disconnect()
+
+      node.isAvailable = true
+      node.assignedCellIndex = null
+    }
+  }
+
+  releaseFilterNode(cellIndex: number): void {
+    const node = this.filterPool.find(node => node.assignedCellIndex === cellIndex)
+    if (node && this.audioContext) {
+      // Reset filter to allpass
+      node.filterNode.type = 'allpass'
+      node.filterNode.frequency.setValueAtTime(1000, this.audioContext.currentTime)
+
+      // Disconnect all connections
+      node.filterNode.disconnect()
+
+      node.isAvailable = true
+      node.assignedCellIndex = null
+    }
+  }
+
+  releaseAllNodes(): void {
+    // Track cells that need to be restarted
+    const cellsToRestart: number[] = []
+
+    // Release all delay nodes and track affected cells
+    this.delayPool.forEach((node) => {
+      if (!node.isAvailable && node.assignedCellIndex !== null) {
+        cellsToRestart.push(node.assignedCellIndex)
+        this.releaseDelayNode(node.assignedCellIndex)
+      }
+    })
+
+    // Release all filter nodes and track affected cells
+    this.filterPool.forEach((node) => {
+      if (!node.isAvailable && node.assignedCellIndex !== null) {
+        if (!cellsToRestart.includes(node.assignedCellIndex)) {
+          cellsToRestart.push(node.assignedCellIndex)
+        }
+        this.releaseFilterNode(node.assignedCellIndex)
+      }
+    })
+
+    // Reset all cell parameters that use delay/filter
+    cellParameters.forEach((params, cellIndex) => {
+      if (params.delayWet > 0) {
+        params.delayWet = 0
+      }
+      if (params.filter !== 0) {
+        params.filter = 0
+      }
+    })
+
+    // Restart affected stems that are currently active to reconnect them properly
+    cellsToRestart.forEach(cellIndex => {
+      const cell = gridCells[cellIndex]
+      if (cell && cell.isActive && cell.stem && audioScheduler.isAudioInitialized()) {
+        // Remove and re-add the stem to reconnect it properly
+        audioScheduler.removeStem(cellIndex)
+        audioScheduler.addStem(cellIndex, cell.stem)
+      }
+    })
+
+    updateCellVisuals()
+    console.log(`All pool nodes released and ${cellsToRestart.length} stems reconnected`)
+  }
+
+  getAvailableDelayCount(): number {
+    return this.delayPool.filter(node => node.isAvailable).length
+  }
+
+  getAvailableFilterCount(): number {
+    return this.filterPool.filter(node => node.isAvailable).length
+  }
+
+  getAssignedDelayNode(cellIndex: number): PooledDelayNode | null {
+    return this.delayPool.find(node => node.assignedCellIndex === cellIndex) || null
+  }
+
+  getAssignedFilterNode(cellIndex: number): PooledFilterNode | null {
+    return this.filterPool.find(node => node.assignedCellIndex === cellIndex) || null
+  }
+
+  getDelayNodeIndex(cellIndex: number): number {
+    const nodeIndex = this.delayPool.findIndex(node => node.assignedCellIndex === cellIndex)
+    return nodeIndex >= 0 ? nodeIndex + 1 : -1 // Return 1-based index for display
+  }
+
+  getFilterNodeIndex(cellIndex: number): number {
+    const nodeIndex = this.filterPool.findIndex(node => node.assignedCellIndex === cellIndex)
+    return nodeIndex >= 0 ? nodeIndex + 1 : -1 // Return 1-based index for display
+  }
+}
+
+// Global node pool instance
+const nodePool = new NodePool()
+
+// Update controls availability based on pool state
+function updateControlsAvailability(): void {
+  const filterBtn = document.getElementById('filterBtn')
+  const delayBtn = document.getElementById('delayBtn')
+
+  if (filterBtn) {
+    const filterAvailable = nodePool.getAvailableFilterCount() > 0
+    filterBtn.style.opacity = filterAvailable ? '1' : '0.3'
+    filterBtn.style.pointerEvents = filterAvailable ? 'auto' : 'none'
+    filterBtn.title = filterAvailable ? '' : `No filter nodes available (${nodePool.getAvailableFilterCount()}/8)`
+  }
+
+  if (delayBtn) {
+    const delayAvailable = nodePool.getAvailableDelayCount() > 0
+    delayBtn.style.opacity = delayAvailable ? '1' : '0.3'
+    delayBtn.style.pointerEvents = delayAvailable ? 'auto' : 'none'
+    delayBtn.title = delayAvailable ? '' : `No delay nodes available (${nodePool.getAvailableDelayCount()}/8)`
+  }
+}
+
+// Delay preset management
+interface DelayPreset {
+  name: string
+  wet: number // 0-1
+  feedback: number // 0-0.95
+  time: number // 0-1 (exponential mapped)
+  syncFraction?: number // Optional BPM sync fraction
+}
+
+const delayPresets: DelayPreset[] = [
+  { name: 'Off', wet: 0, feedback: 0, time: 0 },
+
+  // Flanger Effects (1-10ms range)
+  { name: 'Light Flanger', wet: 0.3, feedback: 0.15, time: 0.01 }, // ~2ms
+  { name: 'Deep Flanger', wet: 0.5, feedback: 0.4, time: 0.02 }, // ~5ms
+  { name: 'Jet Flanger', wet: 0.6, feedback: 0.7, time: 0.025 }, // ~8ms
+
+  // Chorus Effects (5-30ms range)
+  { name: 'Subtle Chorus', wet: 0.25, feedback: 0.05, time: 0.04 }, // ~15ms
+  { name: 'Rich Chorus', wet: 0.4, feedback: 0.15, time: 0.06 }, // ~25ms
+
+  // Short Delays
+  { name: 'Tight Slap', wet: 0.15, feedback: 0.1, time: 0.08 }, // ~50ms
+  { name: 'Room Slap', wet: 0.25, feedback: 0.25, time: 0.15 }, // ~120ms
+  { name: 'Hall Echo', wet: 0.35, feedback: 0.35, time: 0.25 }, // ~250ms
+
+  // BPM Synced Delays
+  { name: '1/32 Note', wet: 0.25, feedback: 0.25, time: 0.2, syncFraction: 0.03125 },
+  { name: '1/16 Note', wet: 0.3, feedback: 0.3, time: 0.3, syncFraction: 0.0625 },
+  { name: '1/12 Note', wet: 0.3, feedback: 0.35, time: 0.35, syncFraction: 0.08333333333 },
+  { name: '1/8 Note', wet: 0.35, feedback: 0.35, time: 0.4, syncFraction: 0.125 },
+  { name: '1/6 Note', wet: 0.35, feedback: 0.4, time: 0.45, syncFraction: 0.16666666666 },
+  { name: '1/4 Note', wet: 0.4, feedback: 0.4, time: 0.6, syncFraction: 0.25 },
+  { name: '1/3 Note', wet: 0.4, feedback: 0.45, time: 0.7, syncFraction: 0.33333333333 },
+  { name: '1/2 Note', wet: 0.45, feedback: 0.5, time: 0.8, syncFraction: 0.5 },
+
+  // Long Delays & Reverbs
+  { name: 'Medium Verb', wet: 0.4, feedback: 0.5, time: 0.65 }, // ~600ms
+  { name: 'Long Verb', wet: 0.5, feedback: 0.6, time: 0.8 }, // ~1000ms
+  { name: 'Cathedral', wet: 0.6, feedback: 0.7, time: 0.9 }, // ~1500ms
+
+  // Special Effects
+  { name: 'Pingpong', wet: 0.5, feedback: 0.8, time: 0.45 }, // ~400ms high feedback
+  { name: 'Infinite', wet: 0.6, feedback: 0.9, time: 0.7 }, // Nearly self-oscillating
+  { name: 'Chaos', wet: 0.7, feedback: 0.9, time: 0.55 } // High feedback, medium time
+]
+
+let currentDelayPresetIndex = 0
+
+function applyDelayPreset(presetIndex: number): void {
+  if (controlState.controlledCellIndex === null) return
+
+  const preset = delayPresets[presetIndex]
+  if (!preset) return
+
+  const cellIndex = controlState.controlledCellIndex
+
+  // Get the stem's BPM if we need to sync
+  let timeValue = preset.time
+  if (preset.syncFraction) {
+    const cell = gridCells[cellIndex]
+    if (cell?.stem?.bpm) {
+      // Calculate BPM-synced delay time
+      timeValue = audioScheduler.calculateBPMDelayTime(preset.syncFraction, cell.stem.bpm)
+    }
+  }
+
+  // Apply preset values
+  setCellParameter(cellIndex, 'delayWet', preset.wet)
+  setCellParameter(cellIndex, 'delayFeedback', preset.feedback)
+  setCellParameter(cellIndex, 'delayTime', timeValue)
+
+  // Update sliders to reflect new values
+  updateDelayControlsDisplay(preset, timeValue)
+
+  console.log(`Applied delay preset: ${preset.name}`)
+}
+
+function updateDelayControlsDisplay(preset: DelayPreset, timeValue: number): void {
+  // Update Delay Wet
+  const delayWetSlider = document.getElementById('delayWetSlider') as HTMLInputElement
+  const delayWetParameterValue = document.getElementById('delayWetParameterValue')
+  if (delayWetSlider && delayWetParameterValue) {
+    const wetPercent = Math.round(preset.wet * 100)
+    delayWetSlider.value = wetPercent.toString()
+    delayWetParameterValue.textContent = `${wetPercent}%`
+  }
+
+  // Update Delay Feedback
+  const delayFeedbackSlider = document.getElementById('delayFeedbackSlider') as HTMLInputElement
+  const delayFeedbackParameterValue = document.getElementById('delayFeedbackParameterValue')
+  if (delayFeedbackSlider && delayFeedbackParameterValue) {
+    const feedbackPercent = Math.round(preset.feedback * 100)
+    delayFeedbackSlider.value = feedbackPercent.toString()
+    delayFeedbackParameterValue.textContent = `${feedbackPercent}%`
+  }
+
+  // Update Delay Time
+  const delayTimeSlider = document.getElementById('delayTimeSlider') as HTMLInputElement
+  const delayParameterValue = document.getElementById('delayParameterValue')
+  if (delayTimeSlider && delayParameterValue) {
+    const timePercent = Math.round(timeValue * 100)
+    delayTimeSlider.value = timePercent.toString()
+
+    // Calculate actual delay time in ms for display
+    const exponentialValue = Math.pow(timeValue, 3)
+    const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+
+    if (preset.syncFraction) {
+      const fractionNames: { [key: number]: string } = {
+        0.03125: '1/32',
+        0.0625: '1/16',
+        0.08333333333: '1/12',
+        0.125: '1/8',
+        0.16666666666: '1/6',
+        0.25: '1/4',
+        0.33333333333: '1/3',
+        0.5: '1/2'
+      }
+      const fractionName = fractionNames[preset.syncFraction] || `${preset.syncFraction}`
+      delayParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
+    } else {
+      delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+    }
+  }
+}
+
+function navigateDelayPreset(direction: 'prev' | 'next'): void {
+  if (direction === 'next') {
+    currentDelayPresetIndex = (currentDelayPresetIndex + 1) % delayPresets.length
+  } else {
+    currentDelayPresetIndex = (currentDelayPresetIndex - 1 + delayPresets.length) % delayPresets.length
+  }
+
+  applyDelayPreset(currentDelayPresetIndex)
+
+  // Provide user feedback in delay time display
+  const preset = delayPresets[currentDelayPresetIndex]
+  const delayParameterValue = document.getElementById('delayParameterValue')
+  if (delayParameterValue) {
+    // Temporarily show preset name
+    delayParameterValue.textContent = `${preset.name}`
+    delayParameterValue.style.fontWeight = 'bold'
+    delayParameterValue.style.color = '#667eea'
+
+    // Revert to time display after 1 second
+    setTimeout(() => {
+      const cellParams = getCellParameters(controlState.controlledCellIndex!)
+      if (cellParams) {
+        const exponentialValue = Math.pow(cellParams.delayTime, 3)
+        const delayTimeMs = 0.1 + (exponentialValue * 1999.9)
+
+        if (preset.syncFraction) {
+          const fractionNames: { [key: number]: string } = {
+            0.03125: '1/32',
+            0.0625: '1/16',
+            0.08333333333: '1/12',
+            0.125: '1/8',
+            0.16666666666: '1/6',
+            0.25: '1/4',
+            0.33333333333: '1/3',
+            0.5: '1/2'
+          }
+          const fractionName = fractionNames[preset.syncFraction] || `${preset.syncFraction}`
+          delayParameterValue.textContent = `${fractionName} (${delayTimeMs.toFixed(1)}ms)`
+        } else {
+          delayParameterValue.textContent = `${delayTimeMs.toFixed(1)}ms`
+        }
+
+        delayParameterValue.style.fontWeight = ''
+        delayParameterValue.style.color = ''
+      }
+    }, 1000)
+  }
+
+  console.log(`Delay preset: ${preset.name} (${currentDelayPresetIndex + 1}/${delayPresets.length})`)
 }

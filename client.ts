@@ -44,54 +44,77 @@ looper.onDirectoryLoaded(async (handle) => {
 
   const audio = new AudioContext()
 
-  // Phase 1: Read all ZIP file metadata (fast)
-  console.log('Phase 1: Reading all ZIP metadata...')
-  looper.updateLoadingStatus(`Reading ${zipFiles.length} ZIP files...`)
+  // Single phase: Process each ZIP file completely before moving to the next
+  console.log('Processing ZIP files one at a time...')
+  looper.updateLoadingStatus(`Processing ${zipFiles.length} ZIP files...`)
 
-  const allStemMetadata = []
-  for (const file of zipFiles) {
-    console.log(`Reading metadata from ${file.name}...`)
-    looper.updateLoadingStatus(`Reading ${file.name}...`)
+  let totalProcessedStems = 0
+
+  for (let fileIndex = 0; fileIndex < zipFiles.length; fileIndex++) {
+    const file = zipFiles[fileIndex]
+    console.log(`Processing ${file.name} (${fileIndex + 1}/${zipFiles.length})...`)
+    looper.updateLoadingStatus(`Processing ${file.name} (${fileIndex + 1}/${zipFiles.length})...`)
 
     try {
+      // Read metadata for this ZIP file
       const stemMetadata = await looper.readZipFileMetadata(handle, file.name)
-      allStemMetadata.push(...stemMetadata)
+      console.log(`Found ${stemMetadata.length} stems in ${file.name}`)
 
-      // Add metadata to grid immediately (shows stem info but with loading state)
-      looper.addStemMetadataToGrid(stemMetadata)
+      // Process each stem in this ZIP file immediately
+      const processedStems: any[] = []
 
-      console.log(`Added ${stemMetadata.length} stems metadata from ${file.name}`)
+      for (let stemIndex = 0; stemIndex < stemMetadata.length; stemIndex++) {
+        const metadata = stemMetadata[stemIndex]
+        const currentStem = totalProcessedStems + stemIndex + 1
+        const totalEstimated = zipFiles.length * (stemMetadata.length || 5) // Rough estimate
+
+        try {
+          console.log(`Decoding ${currentStem}: ${metadata.name}`)
+          looper.updateLoadingStatus(`Decoding ${currentStem}: ${metadata.name}`)
+
+          // Decode audio buffer for this stem
+          const audioBuffer = await looper.decodeAudioForStem(audio, metadata.zipFile)
+
+          // Create complete stem object with audio buffer
+          const completeStem = {
+            name: metadata.name,
+            bpm: metadata.bpm,
+            kind: metadata.kind,
+            buffer: audioBuffer
+          }
+
+          processedStems.push(completeStem)
+          console.log(`✓ Processed ${metadata.name}`)
+
+        } catch (error) {
+          console.error(`Error processing stem ${metadata.name}:`, error)
+          // Continue with other stems in this ZIP
+        }
+      }
+
+      // Add all processed stems from this ZIP file to the grid at once
+      if (processedStems.length > 0) {
+        looper.addStemsToGrid(processedStems)
+        totalProcessedStems += processedStems.length
+        console.log(`✓ Added ${processedStems.length} stems from ${file.name} to grid`)
+      }
+
+      // Clean up - explicitly clear references to help garbage collection
+      stemMetadata.length = 0
+      processedStems.length = 0
+
     } catch (error) {
-      console.error(`Error reading metadata from ${file.name}:`, error)
+      console.error(`Error processing ZIP file ${file.name}:`, error)
+      // Continue with next ZIP file
+    }
+
+    // Force garbage collection hint (if available)
+    if ('gc' in window && typeof (window as any).gc === 'function') {
+      (window as any).gc()
     }
   }
 
-  console.log(`Total stems to decode: ${allStemMetadata.length}`)
-  looper.updateLoadingStatus(`Decoding ${allStemMetadata.length} audio files...`)
-
-  // Phase 2: Progressively decode audio buffers
-  console.log('Phase 2: Decoding audio progressively...')
-  let decodedCount = 0
-  for (let i = 0; i < allStemMetadata.length; i++) {
-    const metadata = allStemMetadata[i]
-    try {
-      console.log(`Decoding audio ${decodedCount + 1}/${allStemMetadata.length}: ${metadata.name}`)
-      looper.updateLoadingStatus(`Decoding ${decodedCount + 1}/${allStemMetadata.length}: ${metadata.name}`)
-
-      const audioBuffer = await looper.decodeAudioForStem(audio, metadata.zipFile)
-
-      // Update the specific cell with the decoded audio
-      looper.updateCellWithAudioBuffer(i, audioBuffer)
-
-      decodedCount++
-      console.log(`✓ Decoded ${metadata.name} (${decodedCount}/${allStemMetadata.length})`)
-    } catch (error) {
-      console.error(`Error decoding audio for ${metadata.name}:`, error)
-      // Leave the cell in loading state or mark as error
-    }
-  }
-
-  console.log('All audio decoding complete!')
+  console.log(`All processing complete! Total stems: ${totalProcessedStems}`)
   looper.updateLoadingStatus('Ready to play! Click "Start Audio" when ready.')
 })
 

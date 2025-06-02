@@ -96,7 +96,7 @@ export class PlayerWorklet {
 export class PlayerProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
-      { name: 'delay', defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'delay', defaultValue: 0.5, minValue: 0, maxValue: 2, automationRate: 'k-rate' },
       { name: 'feedback', defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
     ]
   }

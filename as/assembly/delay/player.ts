@@ -5,7 +5,7 @@ export class Player {
   delayBufferR: usize = 0
   delayBufferSize: u32 = 0
   writePos: u32 = 0
-  maxDelayTime: f32 = 1.0 // 1 second max delay
+  maxDelayTime: f32 = 2.0 // 1 second max delay
 
   constructor(public sampleRate: u32) {
     this.delayBufferSize = u32(f32(this.sampleRate) * this.maxDelayTime)
