@@ -27,6 +27,13 @@ export default ({ mode }: ConfigEnv): UserConfig => {
         srcEntryFile: 'as/assembly/delay/index.ts',
         mapFile: './as/build/delay.wasm.map',
       }),
+      ViteAssemblyScript({
+        configFile: 'asconfig-pitch.json',
+        projectRoot: '.',
+        srcMatch: 'as/assembly/pitch',
+        srcEntryFile: 'as/assembly/pitch/index.ts',
+        mapFile: './as/build/pitch.wasm.map',
+      }),
     ],
     root: '.',
     build: {

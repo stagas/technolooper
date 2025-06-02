@@ -1,0 +1,38 @@
+{
+  "targets": {
+    "debug": {
+      "outFile": "./as/build/pitch.wasm",
+      "textFile": "./as/build/pitch.wat",
+      "sourceMap": true,
+      "debug": true,
+      "noAssert": true
+    },
+    "release": {
+      "outFile": "./as/build/pitch.wasm",
+      "textFile": "./as/build/pitch.wat",
+      "sourceMap": true,
+      "debug": false,
+      "optimizeLevel": 3,
+      "shrinkLevel": 3,
+      "converge": true,
+      "noAssert": true
+    }
+  },
+  "options": {
+    "enable": [
+      "simd",
+      "relaxed-simd",
+      "threads"
+    ],
+    "sharedMemory": false,
+    "importMemory": true,
+    "initialMemory": 500,
+    "maximumMemory": 500,
+    "bindings": "raw",
+    "runtime": false,
+    "exportRuntime": false
+  },
+  "entries": [
+    "./as/assembly/pitch/index.ts"
+  ]
+}

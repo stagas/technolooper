@@ -1,4 +1,4 @@
-import { Out } from './shared'
+import { Out } from '../shared'
 
 export class Player {
   delayBufferL: usize = 0

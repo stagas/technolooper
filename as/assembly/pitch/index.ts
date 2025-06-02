@@ -13,11 +13,10 @@ export function playerProcess(
   end: u32,
   input$: usize,
   output$: usize,
-  delay: f32,
-  feedback: f32
+  pitchRatio: f32
 ): void {
   const player = changetype<Player>(player$)
-  player.process(begin, end, input$, output$, delay, feedback)
+  player.process(begin, end, input$, output$, pitchRatio)
 }
 
 export function createOut(): usize {
