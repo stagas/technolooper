@@ -226,14 +226,38 @@ export function setupControlRowEventListeners(): void {
   if (pitchBtn) {
     pitchBtn.addEventListener('click', () => {
       const nodePool = getNodePool()
-      if (nodePool.getAvailablePitchCount() > 0) {
-        enterParameterControl('pitch', 'Pitch Shift', 'x')
+      const audioScheduler = getAudioScheduler()
+
+      // Check if pitch worklets are supported at all
+      if (!audioScheduler.isAudioInitialized()) {
+        console.warn('Audio not initialized yet')
+        pitchBtn.style.backgroundColor = '#ff9f40'
+        setTimeout(() => {
+          pitchBtn.style.backgroundColor = ''
+        }, 1000)
+        return
       }
 
-      else {
+      if (nodePool.getAvailablePitchCount() > 0) {
+        enterParameterControl('pitch', 'Pitch Shift', 'x')
+      } else {
         console.warn('No pitch nodes available')
-        // Visual feedback - briefly flash the button
-        pitchBtn.style.backgroundColor = '#ff6b6b'
+        // Check if it's a fundamental support issue vs just no available nodes
+        const totalPitchNodes = 8 // We always create 8 pitch nodes if supported
+        const assignedNodes = totalPitchNodes - nodePool.getAvailablePitchCount()
+
+        if (assignedNodes === 0) {
+          // No nodes assigned but none available = not supported
+          console.warn('📱 Pitch effects not supported on this device/browser')
+          pitchBtn.title = 'Pitch effects not supported on this device'
+          pitchBtn.style.backgroundColor = '#666'
+        } else {
+          // Some nodes assigned = just full
+          console.warn('All pitch nodes in use')
+          pitchBtn.title = `No pitch nodes available (${nodePool.getAvailablePitchCount()}/8)`
+          pitchBtn.style.backgroundColor = '#ff6b6b'
+        }
+
         setTimeout(() => {
           pitchBtn.style.backgroundColor = ''
         }, 200)
@@ -246,14 +270,38 @@ export function setupControlRowEventListeners(): void {
   if (delayBtn) {
     delayBtn.addEventListener('click', () => {
       const nodePool = getNodePool()
-      if (nodePool.getAvailableDelayCount() > 0) {
-        enterParameterControl('delay', 'Delay Settings', '')
+      const audioScheduler = getAudioScheduler()
+
+      // Check if delay worklets are supported at all
+      if (!audioScheduler.isAudioInitialized()) {
+        console.warn('Audio not initialized yet')
+        delayBtn.style.backgroundColor = '#ff9f40'
+        setTimeout(() => {
+          delayBtn.style.backgroundColor = ''
+        }, 1000)
+        return
       }
 
-      else {
+      if (nodePool.getAvailableDelayCount() > 0) {
+        enterParameterControl('delay', 'Delay Settings', '')
+      } else {
         console.warn('No delay nodes available')
-        // Visual feedback - briefly flash the button
-        delayBtn.style.backgroundColor = '#ff6b6b'
+        // Check if it's a fundamental support issue vs just no available nodes
+        const totalDelayNodes = 8 // We always create 8 delay nodes if supported
+        const assignedNodes = totalDelayNodes - nodePool.getAvailableDelayCount()
+
+        if (assignedNodes === 0) {
+          // No nodes assigned but none available = not supported
+          console.warn('📱 Delay effects not supported on this device/browser')
+          delayBtn.title = 'Delay effects not supported on this device'
+          delayBtn.style.backgroundColor = '#666'
+        } else {
+          // Some nodes assigned = just full
+          console.warn('All delay nodes in use')
+          delayBtn.title = `No delay nodes available (${nodePool.getAvailableDelayCount()}/8)`
+          delayBtn.style.backgroundColor = '#ff6b6b'
+        }
+
         setTimeout(() => {
           delayBtn.style.backgroundColor = ''
         }, 200)

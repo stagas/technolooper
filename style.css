@@ -212,6 +212,25 @@ body {
   touch-action: none;
 }
 
+/* Responsive control row height */
+@media (max-width: 768px) {
+  .control-row {
+    height: 90px;
+  }
+}
+
+@media (max-width: 640px) {
+  .control-row {
+    height: 85px;
+  }
+}
+
+@media (max-width: 480px) {
+  .control-row {
+    height: 80px;
+  }
+}
+
 .control-buttons {
   display: flex;
   gap: 0;
@@ -305,7 +324,8 @@ body {
   background: linear-gradient(135deg, #e53e3e, #c53030) !important;
   border-color: #fc8181 !important;
   flex: 0 0 40px !important;
-  width: 20px;
+  width: 40px;
+  min-width: 40px !important;
 }
 
 .return-btn:hover {
@@ -750,4 +770,247 @@ body {
 .delay-settings-control .delay-sync-buttons,
 .delay-settings-control .delay-sync-btn {
   display: none;
+}
+
+/* Responsive adjustments for control buttons */
+@media (max-width: 768px) {
+  .control-btn {
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+  }
+}
+
+@media (max-width: 640px) {
+  .control-btn {
+    padding: 8px 10px;
+    font-size: 0.65rem;
+    letter-spacing: 0.2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .control-btn {
+    padding: 6px 8px;
+    font-size: 0.6rem;
+    letter-spacing: 0.1px;
+  }
+}
+
+/* Ensure return button stays compact */
+@media (max-width: 640px) {
+  .return-btn {
+    flex: 0 0 35px !important;
+    width: 35px;
+    min-width: 35px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .return-btn {
+    flex: 0 0 30px !important;
+    width: 30px;
+    min-width: 30px !important;
+  }
+}
+
+/* Responsive adjustments for parameter controls */
+@media (max-width: 768px) {
+  .parameter-info {
+    width: 100px;
+    padding: 8px;
+  }
+
+  .parameter-info span:first-child {
+    font-size: 0.7rem;
+    margin-bottom: 6px;
+  }
+
+  .parameter-info span:last-child {
+    font-size: 1rem;
+  }
+
+  .parameter-slider::-webkit-slider-thumb {
+    width: 32px;
+    height: 32px;
+  }
+
+  .parameter-slider::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .parameter-info {
+    width: 80px;
+    padding: 6px;
+  }
+
+  .parameter-info span:first-child {
+    font-size: 0.6rem;
+    margin-bottom: 4px;
+  }
+
+  .parameter-info span:last-child {
+    font-size: 0.9rem;
+  }
+
+  .parameter-slider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .parameter-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .slider-control .parameter-slider {
+    margin: 0 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .parameter-info {
+    width: 70px;
+    padding: 4px;
+  }
+
+  .parameter-info span:first-child {
+    font-size: 0.55rem;
+    margin-bottom: 3px;
+  }
+
+  .parameter-info span:last-child {
+    font-size: 0.8rem;
+  }
+
+  .parameter-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .parameter-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .slider-control .parameter-slider {
+    margin: 0 10px;
+  }
+}
+
+/* Responsive adjustments for rate buttons */
+@media (max-width: 768px) {
+  .rate-btn {
+    padding: 6px 10px;
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .rate-btn {
+    padding: 4px 8px;
+    font-size: 0.55rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rate-btn {
+    padding: 3px 6px;
+    font-size: 0.5rem;
+  }
+}
+
+/* Responsive adjustments for delay settings */
+@media (max-width: 768px) {
+  .delay-settings-control {
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .delay-settings-control .parameter-info {
+    padding: 4px 6px;
+  }
+
+  .delay-settings-control .parameter-info span {
+    font-size: 0.6rem;
+  }
+
+  .delay-settings-control .parameter-info span:last-child {
+    font-size: 0.75rem;
+  }
+
+  .delay-nav-button {
+    width: 35px;
+    height: 35px;
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .delay-settings-control {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .delay-top-row {
+    gap: 2px;
+  }
+
+  .delay-slider-item {
+    padding: 1px;
+  }
+
+  .delay-settings-control .parameter-info {
+    padding: 3px 4px;
+  }
+
+  .delay-settings-control .parameter-info span {
+    font-size: 0.55rem;
+  }
+
+  .delay-settings-control .parameter-info span:last-child {
+    font-size: 0.7rem;
+  }
+
+  .delay-nav-button {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .delay-settings-control {
+    padding: 1px;
+    gap: 1px;
+  }
+
+  .delay-top-row {
+    gap: 1px;
+  }
+
+  .delay-slider-item {
+    padding: 0px;
+  }
+
+  .delay-settings-control .parameter-info {
+    padding: 2px 3px;
+  }
+
+  .delay-settings-control .parameter-info span {
+    font-size: 0.5rem;
+  }
+
+  .delay-settings-control .parameter-info span:last-child {
+    font-size: 0.65rem;
+  }
+
+  .delay-nav-button {
+    width: 25px;
+    height: 25px;
+    font-size: 0.9rem;
+  }
 }

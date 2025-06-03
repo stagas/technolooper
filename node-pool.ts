@@ -12,51 +12,109 @@ export class NodePool {
   async initialize(audioContext: AudioContext): Promise<void> {
     this.audioContext = audioContext
 
-    // Initialize delay pool (8 nodes)
-    for (let i = 0; i < 8; i++) {
-      const delayResult = await Delay(audioContext)
-      const delayWetNode = audioContext.createGain()
-      const delayDryNode = audioContext.createGain()
+    // Initialize delay pool (8 nodes) - only if AudioWorklet is supported
+    if (audioContext.audioWorklet) {
+      try {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const delayResult = await Delay(audioContext)
+            const delayWetNode = audioContext.createGain()
+            const delayDryNode = audioContext.createGain()
 
-      delayWetNode.gain.setValueAtTime(0, audioContext.currentTime)
-      delayDryNode.gain.setValueAtTime(1, audioContext.currentTime)
+            delayWetNode.gain.setValueAtTime(0, audioContext.currentTime)
+            delayDryNode.gain.setValueAtTime(1, audioContext.currentTime)
 
-      this.delayPool.push({
-        delayNode: delayResult.node,
-        delayParams: { delay: delayResult.delay, feedback: delayResult.feedback },
-        delayWetNode,
-        delayDryNode,
-        isAvailable: true,
-        assignedCellIndex: null
-      })
+            // Test if the delay node is actually working
+            if (delayResult.delay && delayResult.feedback) {
+              delayResult.delay.setValueAtTime(0, audioContext.currentTime)
+              delayResult.feedback.setValueAtTime(0, audioContext.currentTime)
+            }
+
+            this.delayPool.push({
+              delayNode: delayResult.node,
+              delayParams: { delay: delayResult.delay, feedback: delayResult.feedback },
+              delayWetNode,
+              delayDryNode,
+              isAvailable: true,
+              assignedCellIndex: null
+            })
+          } catch (nodeError) {
+            console.warn(`⚠️ Failed to create delay node ${i + 1}:`, nodeError)
+            // Continue with other nodes - some might work even if others fail
+          }
+        }
+        console.log(`📱 Delay pool initialized: ${this.delayPool.length} nodes (${8 - this.delayPool.length} failed)`)
+
+        if (this.delayPool.length === 0) {
+          console.warn('📱 No delay nodes could be created - delay effects will be disabled')
+        } else if (this.delayPool.length < 8) {
+          console.warn(`📱 Only ${this.delayPool.length}/8 delay nodes created - limited delay effect availability`)
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize delay pool:', error)
+        console.warn('📱 Delay effects disabled - this is common on mobile browsers')
+      }
+    } else {
+      console.warn('📱 Delay pool disabled - AudioWorklet not supported')
     }
 
-    // Initialize filter pool (8 nodes)
-    for (let i = 0; i < 8; i++) {
-      const filterNode = audioContext.createBiquadFilter()
-      filterNode.type = 'allpass'
-      filterNode.frequency.setValueAtTime(1000, audioContext.currentTime)
+    // Initialize filter pool (8 nodes) - always available
+    try {
+      for (let i = 0; i < 8; i++) {
+        const filterNode = audioContext.createBiquadFilter()
+        filterNode.type = 'allpass'
+        filterNode.frequency.setValueAtTime(1000, audioContext.currentTime)
 
-      this.filterPool.push({
-        filterNode,
-        isAvailable: true,
-        assignedCellIndex: null
-      })
+        this.filterPool.push({
+          filterNode,
+          isAvailable: true,
+          assignedCellIndex: null
+        })
+      }
+      console.log('📱 Filter pool initialized: 8 nodes')
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize filter pool:', error)
     }
 
-    // Initialize pitch pool (8 nodes)
-    for (let i = 0; i < 8; i++) {
-      const pitchResult = await Pitch(audioContext)
+    // Initialize pitch pool (8 nodes) - only if AudioWorklet is supported
+    if (audioContext.audioWorklet) {
+      try {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const pitchResult = await Pitch(audioContext)
 
-      this.pitchPool.push({
-        pitchNode: pitchResult.node,
-        pitchRatio: pitchResult.pitchRatio,
-        isAvailable: true,
-        assignedCellIndex: null
-      })
+            // Test if the pitch node is actually working
+            if (pitchResult.pitchRatio) {
+              pitchResult.pitchRatio.setValueAtTime(1.0, audioContext.currentTime)
+            }
+
+            this.pitchPool.push({
+              pitchNode: pitchResult.node,
+              pitchRatio: pitchResult.pitchRatio,
+              isAvailable: true,
+              assignedCellIndex: null
+            })
+          } catch (nodeError) {
+            console.warn(`⚠️ Failed to create pitch node ${i + 1}:`, nodeError)
+            // Continue with other nodes - some might work even if others fail
+          }
+        }
+        console.log(`📱 Pitch pool initialized: ${this.pitchPool.length} nodes (${8 - this.pitchPool.length} failed)`)
+
+        if (this.pitchPool.length === 0) {
+          console.warn('📱 No pitch nodes could be created - pitch effects will be disabled')
+        } else if (this.pitchPool.length < 8) {
+          console.warn(`📱 Only ${this.pitchPool.length}/8 pitch nodes created - limited pitch effect availability`)
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize pitch pool:', error)
+        console.warn('📱 Pitch effects disabled - this is common on mobile browsers')
+      }
+    } else {
+      console.warn('📱 Pitch pool disabled - AudioWorklet not supported')
     }
 
-    console.log('Node pools initialized: 8 delay nodes, 8 filter nodes, 8 pitch nodes')
+    console.log(`📱 Node pools ready: ${this.delayPool.length} delay, ${this.filterPool.length} filter, ${this.pitchPool.length} pitch`)
   }
 
   assignDelayNode(cellIndex: number): PooledDelayNode | null {

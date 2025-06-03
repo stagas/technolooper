@@ -46,7 +46,8 @@ export class AudioScheduler {
     if (this.isInitialized) return
 
     try {
-      this.audioContext = new AudioContext()
+      // Create audio context with better mobile support
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       this.masterGainNode = this.audioContext.createGain()
 
       // Create master effect nodes
@@ -59,66 +60,166 @@ export class AudioScheduler {
       this.masterDelayWetNode.gain.setValueAtTime(0, this.audioContext.currentTime) // Start with no delay wet
       this.masterDelayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime) // Full dry by default
 
-      // Resume context if suspended
+      // Resume context if suspended (critical for mobile)
       if (this.audioContext.state === 'suspended') {
+        console.log('📱 Audio context suspended, attempting to resume...')
         await this.audioContext.resume()
+        console.log(`📱 Audio context resumed, state: ${this.audioContext.state}`)
       }
 
-      // Initialize DelayNode worklet registration once
-      console.log('Initializing DelayNode worklet...')
-      const testDelay = await Delay(this.audioContext)
-      this.isDelayReady = true
-      // Disconnect the test delay node as we just needed it for worklet registration
-      testDelay.node.disconnect()
-      console.log('DelayNode worklet ready')
-
-      // Initialize PitchNode worklet registration once
-      console.log('Initializing PitchNode worklet...')
-      const testPitch = await Pitch(this.audioContext)
-      this.isPitchReady = true
-      // Disconnect the test pitch node as we just needed it for worklet registration
-      testPitch.node.disconnect()
-      console.log('PitchNode worklet ready')
-
-      // Create master delay node after worklet is ready
-      const masterDelay = await Delay(this.audioContext)
-      this.masterDelayNode = masterDelay.node
-      this.masterDelayParams = {
-        delay: masterDelay.delay,
-        feedback: masterDelay.feedback
+      // Double-check audio context state
+      if (this.audioContext.state !== 'running') {
+        console.warn(`⚠️ Audio context not running after resume attempt, state: ${this.audioContext.state}`)
       }
 
-      // Create master pitch node after worklet is ready
-      const masterPitch = await Pitch(this.audioContext)
-      this.masterPitchNode = masterPitch.node
-      this.masterPitchRatio = masterPitch.pitchRatio
+      // Check if AudioWorklet is supported (critical for delay/pitch effects)
+      if (!this.audioContext.audioWorklet) {
+        console.warn('⚠️ AudioWorklet not supported on this browser - delay and pitch effects will be disabled')
+        // Set flags to indicate worklets are not available
+        this.isDelayReady = false
+        this.isPitchReady = false
+      } else {
+        // Initialize DelayNode worklet registration once
+        console.log('📱 Initializing DelayNode worklet...')
+        try {
+          const testDelay = await Delay(this.audioContext)
+          this.isDelayReady = true
+          // Disconnect the test delay node as we just needed it for worklet registration
+          testDelay.node.disconnect()
+          console.log('📱 DelayNode worklet ready')
+        } catch (error) {
+          console.warn('⚠️ DelayNode worklet failed to initialize:', error)
+          this.isDelayReady = false
+          // Check for specific mobile/browser compatibility issues
+          if (error instanceof Error) {
+            if (error.message.includes('AudioWorklet') || error.message.includes('worklet')) {
+              console.warn('📱 DelayNode AudioWorklet not properly supported on this browser')
+            } else if (error.message.includes('fetch') || error.message.includes('network')) {
+              console.warn('📱 DelayNode failed to load worklet files - network issue')
+            } else if (error.message.includes('addModule')) {
+              console.warn('📱 DelayNode worklet module failed to load - likely mobile browser limitation')
+            } else if (error.message.includes('register')) {
+              console.warn('📱 DelayNode processor registration failed - worklet not supported')
+            }
+          }
+        }
 
-      // Set up master audio chain: masterGain -> masterFilter -> masterPitch -> delay chain -> destination
-      this.masterGainNode.connect(this.masterFilterNode)
-      this.masterFilterNode.connect(this.masterPitchNode)
+        // Initialize PitchNode worklet registration once
+        console.log('📱 Initializing PitchNode worklet...')
+        try {
+          const testPitch = await Pitch(this.audioContext)
+          this.isPitchReady = true
+          // Disconnect the test pitch node as we just needed it for worklet registration
+          testPitch.node.disconnect()
+          console.log('📱 PitchNode worklet ready')
+        } catch (error) {
+          console.warn('⚠️ PitchNode worklet failed to initialize:', error)
+          this.isPitchReady = false
+          // Check for specific mobile/browser compatibility issues
+          if (error instanceof Error) {
+            if (error.message.includes('WebAssembly') || error.message.includes('wasm')) {
+              console.warn('📱 PitchNode requires WebAssembly - not supported on this browser')
+            } else if (error.message.includes('AudioWorklet') || error.message.includes('worklet')) {
+              console.warn('📱 PitchNode AudioWorklet not properly supported on this browser')
+            } else if (error.message.includes('fetch') || error.message.includes('network')) {
+              console.warn('📱 PitchNode failed to load worklet files - network issue')
+            }
+          }
+        }
+      }
 
-      // Connect to both dry and delay paths
-      this.masterPitchNode.connect(this.masterDelayDryNode)
-      this.masterDelayDryNode.connect(this.audioContext.destination)
+      // Only create master delay/pitch nodes if worklets are ready
+      if (this.isDelayReady) {
+        // Create master delay node after worklet is ready
+        try {
+          const masterDelay = await Delay(this.audioContext)
+          this.masterDelayNode = masterDelay.node
+          this.masterDelayParams = {
+            delay: masterDelay.delay,
+            feedback: masterDelay.feedback
+          }
+          console.log('📱 Master delay node created successfully')
+        } catch (error) {
+          console.warn('⚠️ Failed to create master delay node:', error)
+          this.isDelayReady = false
+          this.masterDelayNode = null
+          this.masterDelayParams = { delay: undefined, feedback: undefined }
+          console.warn('📱 Master delay disabled due to creation failure')
+        }
+      } else {
+        console.warn('📱 Master delay disabled - worklet not available')
+      }
 
-      // Connect master delay to wet path
-      this.masterPitchNode.connect(this.masterDelayNode)
-      this.masterDelayNode.connect(this.masterDelayWetNode)
-      this.masterDelayWetNode.connect(this.audioContext.destination)
+      if (this.isPitchReady) {
+        // Create master pitch node after worklet is ready
+        const masterPitch = await Pitch(this.audioContext)
+        this.masterPitchNode = masterPitch.node
+        this.masterPitchRatio = masterPitch.pitchRatio
+      } else {
+        console.warn('📱 Master pitch disabled - worklet not available')
+      }
+
+      // Set up master audio chain based on what's available
+      this.setupMasterAudioChain()
 
       // Initialize node pools
+      console.log('📱 Initializing node pools...')
       await this.nodePool.initialize(this.audioContext)
 
-      // Initialize master pitch to bypass mode (ratio 1.0)
-      this.updateMasterPitchParameter(1.0)
+      // Log pool status
+      console.log(`📱 Node pools initialized: Delay ${this.nodePool.getAvailableDelayCount()}/8, Filter ${this.nodePool.getAvailableFilterCount()}/8, Pitch ${this.nodePool.getAvailablePitchCount()}/8`)
+
+      // Initialize master pitch to bypass mode (ratio 1.0) if available
+      if (this.isPitchReady) {
+        this.updateMasterPitchParameter(1.0)
+      }
 
       this.updateBarDuration()
       this.isInitialized = true
 
-      console.log('Audio scheduler initialized')
+      console.log('📱 Audio scheduler initialized successfully')
     } catch (error) {
       console.error('Failed to initialize audio:', error)
+      if (error instanceof Error) {
+        console.error('Error details:', error.stack)
+      }
     }
+  }
+
+  private setupMasterAudioChain(): void {
+    if (!this.audioContext || !this.masterGainNode || !this.masterFilterNode) return
+
+    // Basic chain: masterGain -> masterFilter
+    this.masterGainNode.connect(this.masterFilterNode)
+
+    if (this.masterPitchNode) {
+      // With pitch: filter -> pitch -> delays -> destination
+      this.masterFilterNode.connect(this.masterPitchNode)
+
+      if (this.masterDelayNode && this.masterDelayWetNode && this.masterDelayDryNode) {
+        // Full chain with delay
+        this.masterPitchNode.connect(this.masterDelayDryNode)
+        this.masterPitchNode.connect(this.masterDelayNode)
+        this.masterDelayDryNode.connect(this.audioContext.destination)
+        this.masterDelayNode.connect(this.masterDelayWetNode)
+        this.masterDelayWetNode.connect(this.audioContext.destination)
+      } else {
+        // Just pitch, no delay
+        this.masterPitchNode.connect(this.audioContext.destination)
+      }
+    } else if (this.masterDelayNode && this.masterDelayWetNode && this.masterDelayDryNode) {
+      // No pitch, but with delay: filter -> delays -> destination
+      this.masterFilterNode.connect(this.masterDelayDryNode)
+      this.masterFilterNode.connect(this.masterDelayNode)
+      this.masterDelayDryNode.connect(this.audioContext.destination)
+      this.masterDelayNode.connect(this.masterDelayWetNode)
+      this.masterDelayWetNode.connect(this.audioContext.destination)
+    } else {
+      // Basic chain only: filter -> destination
+      this.masterFilterNode.connect(this.audioContext.destination)
+    }
+
+    console.log(`📱 Master audio chain setup complete: Pitch=${!!this.masterPitchNode}, Delay=${!!this.masterDelayNode}`)
   }
 
   private updateBarDuration(): void {
@@ -152,7 +253,25 @@ export class AudioScheduler {
 
   async resumeAudioContext(): Promise<void> {
     if (this.audioContext && this.audioContext.state === 'suspended') {
+      console.log('📱 Resuming suspended audio context...')
       await this.audioContext.resume()
+      console.log(`📱 Audio context state after resume: ${this.audioContext.state}`)
+    }
+
+    // For mobile browsers, sometimes we need to create a dummy sound
+    if (this.audioContext && this.audioContext.state === 'running') {
+      try {
+        // Create and play a silent buffer to unlock audio on mobile
+        const silentBuffer = this.audioContext.createBuffer(1, 1, this.audioContext.sampleRate)
+        const silentSource = this.audioContext.createBufferSource()
+        silentSource.buffer = silentBuffer
+        silentSource.connect(this.audioContext.destination)
+        silentSource.start()
+        silentSource.stop(this.audioContext.currentTime + 0.001)
+        console.log('📱 Silent buffer played to unlock mobile audio')
+      } catch (error) {
+        console.warn('📱 Could not play silent buffer:', error)
+      }
     }
   }
 
@@ -237,13 +356,6 @@ export class AudioScheduler {
       let pooledFilterNode = null
       let pooledPitchNode = null
 
-      if (params.delayWet > 0) {
-        pooledDelayNode = this.nodePool.assignDelayNode(cellIndex)
-        if (!pooledDelayNode) {
-          console.warn(`No available delay nodes for cell ${cellIndex}`)
-        }
-      }
-
       if (params.filter !== 0) {
         pooledFilterNode = this.nodePool.assignFilterNode(cellIndex)
         if (!pooledFilterNode) {
@@ -255,6 +367,46 @@ export class AudioScheduler {
         pooledPitchNode = this.nodePool.assignPitchNode(cellIndex)
         if (!pooledPitchNode) {
           console.warn(`No available pitch nodes for cell ${cellIndex}`)
+        } else {
+          // Test if the pitch node is actually working
+          try {
+            if (pooledPitchNode.pitchRatio) {
+              // Try to set a test value to ensure the parameter is working
+              pooledPitchNode.pitchRatio.setValueAtTime(1.0, this.audioContext.currentTime)
+            } else {
+              console.warn(`Pitch node parameter not available for cell ${cellIndex}`)
+              this.nodePool.releasePitchNode(cellIndex)
+              pooledPitchNode = null
+            }
+          } catch (error) {
+            console.warn(`Pitch node test failed for cell ${cellIndex}:`, error)
+            this.nodePool.releasePitchNode(cellIndex)
+            pooledPitchNode = null
+          }
+        }
+      }
+
+      if (params.delayWet > 0) {
+        pooledDelayNode = this.nodePool.assignDelayNode(cellIndex)
+        if (!pooledDelayNode) {
+          console.warn(`No available delay nodes for cell ${cellIndex}`)
+        } else {
+          // Test if the delay node is actually working
+          try {
+            if (pooledDelayNode.delayParams.delay && pooledDelayNode.delayParams.feedback) {
+              // Try to set test values to ensure the parameters are working
+              pooledDelayNode.delayParams.delay.setValueAtTime(0, this.audioContext.currentTime)
+              pooledDelayNode.delayParams.feedback.setValueAtTime(0, this.audioContext.currentTime)
+            } else {
+              console.warn(`Delay node parameters not available for cell ${cellIndex}`)
+              this.nodePool.releaseDelayNode(cellIndex)
+              pooledDelayNode = null
+            }
+          } catch (error) {
+            console.warn(`Delay node test failed for cell ${cellIndex}:`, error)
+            this.nodePool.releaseDelayNode(cellIndex)
+            pooledDelayNode = null
+          }
         }
       }
 
@@ -399,39 +551,62 @@ export class AudioScheduler {
   }
 
   private applyDelayParameters(sourceInfo: any, wetAmount: number, delayTime: number, feedbackAmount: number, stemBPM: number): void {
-    if (!this.audioContext || !sourceInfo.delayParams) return
+    if (!this.audioContext) return
 
-    // Calculate delay time in seconds with exponential mapping
-    // 0-1 maps to 0.1ms-2000ms exponentially for flanger to long delay
-    const exponentialValue = Math.pow(delayTime, 3) // Cubic curve for more room at small values
-    const delayTimeMs = 0.1 + (exponentialValue * 1999.9) // 0.1ms to 2000ms
-    const delayTimeSeconds = delayTimeMs / 1000
-
-    // Apply delay time to the DelayNode
-    if (sourceInfo.delayParams.delay) {
-      sourceInfo.delayParams.delay.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+    // Check if delay nodes are available and working
+    if (!sourceInfo.delayParams || !sourceInfo.delayParams.delay || !sourceInfo.delayParams.feedback) {
+      console.warn(`🔄 Delay node not available for this source - skipping delay changes`)
+      return
     }
 
-    // Apply feedback to the DelayNode
-    if (sourceInfo.delayParams.feedback) {
+    try {
+      // Calculate delay time in seconds with exponential mapping
+      // 0-1 maps to 0.1ms-2000ms exponentially for flanger to long delay
+      const exponentialValue = Math.pow(delayTime, 3) // Cubic curve for more room at small values
+      const delayTimeMs = 0.1 + (exponentialValue * 1999.9) // 0.1ms to 2000ms
+      const delayTimeSeconds = delayTimeMs / 1000
+
+      // Apply delay time to the DelayNode
+      sourceInfo.delayParams.delay.setValueAtTime(delayTimeSeconds, this.audioContext.currentTime)
+
+      // Apply feedback to the DelayNode
       // feedbackAmount is 0-1 from slider, DelayNode expects 0-0.95
       sourceInfo.delayParams.feedback.setValueAtTime(Math.min(0.95, feedbackAmount), this.audioContext.currentTime)
+
+      // Apply wet/dry mix (Dry is always 100%, Wet controls the amount of delayed signal)
+      sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
+      sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
+
+      console.log(`🔄 DelayNode: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
+    } catch (error) {
+      console.warn(`🔄 Failed to apply delay parameters:`, error)
+      // On mobile/unsupported browsers, we might need to gracefully handle this
+      if (error instanceof Error && error.message.includes('InvalidStateError')) {
+        console.warn(`🔄 Delay worklet not properly initialized - this is common on mobile browsers`)
+      }
     }
-
-    // Apply wet/dry mix (Dry is always 100%, Wet controls the amount of delayed signal)
-    sourceInfo.delayWetNode.gain.setValueAtTime(wetAmount, this.audioContext.currentTime)
-    sourceInfo.delayDryNode.gain.setValueAtTime(1, this.audioContext.currentTime)
-
-    console.log(`🔄 DelayNode: ${delayTimeMs.toFixed(1)}ms, Wet: ${(wetAmount * 100).toFixed(0)}%, Dry: 100%, Feedback: ${(Math.min(0.95, feedbackAmount) * 100).toFixed(0)}%`)
   }
 
   private applyPitchParameter(sourceInfo: any, pitchRatio: number): void {
-    if (!this.audioContext || !sourceInfo.pitchRatio) return
+    if (!this.audioContext) return
 
-    // Apply pitch ratio directly to the PitchNode
-    sourceInfo.pitchRatio.setValueAtTime(pitchRatio, this.audioContext.currentTime)
+    // Check if pitch node is available and working
+    if (!sourceInfo.pitchRatio) {
+      console.warn(`🎵 Pitch node not available for this source - skipping pitch change to ${pitchRatio.toFixed(2)}x`)
+      return
+    }
 
-    console.log(`🎵 Pitch ratio: ${pitchRatio.toFixed(2)}x`)
+    try {
+      // Apply pitch ratio directly to the PitchNode
+      sourceInfo.pitchRatio.setValueAtTime(pitchRatio, this.audioContext.currentTime)
+      console.log(`🎵 Pitch ratio: ${pitchRatio.toFixed(2)}x`)
+    } catch (error) {
+      console.warn(`🎵 Failed to apply pitch ratio ${pitchRatio.toFixed(2)}x:`, error)
+      // On mobile/unsupported browsers, we might need to gracefully handle this
+      if (error instanceof Error && error.message.includes('InvalidStateError')) {
+        console.warn(`🎵 Pitch worklet not properly initialized - this is common on mobile browsers`)
+      }
+    }
   }
 
   // Calculate BPM-synced delay time
@@ -528,6 +703,24 @@ export class AudioScheduler {
 
     // Update the stored parameter
     setCellParameter(cellIndex, 'loopFraction', newFraction)
+
+    // Apply the loop fraction to the actual playing audio source
+    if (sourceInfo.source.buffer) {
+      const bufferDuration = sourceInfo.source.buffer.duration
+      if (newFraction < 1) {
+        const loopEnd = bufferDuration * newFraction
+        sourceInfo.source.loopStart = 0
+        sourceInfo.source.loopEnd = loopEnd
+        sourceInfo.currentLoopFraction = newFraction
+        console.log(`🔄 Applied loop end to ${loopEnd.toFixed(3)}s (${newFraction * 100}% of ${bufferDuration.toFixed(3)}s)`)
+      } else {
+        // Full loop
+        sourceInfo.source.loopStart = 0
+        sourceInfo.source.loopEnd = bufferDuration
+        sourceInfo.currentLoopFraction = 1
+        console.log(`🔄 Applied full loop: ${bufferDuration.toFixed(3)}s`)
+      }
+    }
 
     console.log(`✅ Applied loop fraction change to ${newFraction} for cell ${cellIndex}`)
   }
@@ -697,5 +890,78 @@ export class AudioScheduler {
 
   getMasterBPM(): number {
     return this.masterBPM
+  }
+
+  // Mobile audio debugging helper
+  getMobileAudioStatus(): { isWorking: boolean; state: string; issues: string[] } {
+    const issues: string[] = []
+
+    if (!this.audioContext) {
+      issues.push('Audio context not created')
+      return { isWorking: false, state: 'none', issues }
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      issues.push('Audio context suspended - needs user interaction')
+    }
+
+    if (this.audioContext.state === 'closed') {
+      issues.push('Audio context closed')
+    }
+
+    if (!this.isInitialized) {
+      issues.push('Audio scheduler not initialized')
+    }
+
+    const isWorking = this.audioContext.state === 'running' && this.isInitialized
+
+    return {
+      isWorking,
+      state: this.audioContext.state,
+      issues
+    }
+  }
+
+  // Debug method for troubleshooting mobile audio and node pools
+  getFullAudioStatus(): void {
+    console.log('🔍 Full Audio Status Debug:')
+    console.log(`  Audio Context: ${this.audioContext ? 'Created' : 'Not Created'}`)
+    console.log(`  Audio Context State: ${this.audioContext?.state || 'N/A'}`)
+    console.log(`  Audio Initialized: ${this.isInitialized}`)
+    console.log(`  Master Gain: ${this.masterGainNode ? 'Created' : 'Not Created'}`)
+    console.log(`  Master Filter: ${this.masterFilterNode ? 'Created' : 'Not Created'}`)
+    console.log(`  Master Delay: ${this.masterDelayNode ? 'Created' : 'Not Created'}`)
+    console.log(`  Master Pitch: ${this.masterPitchNode ? 'Created' : 'Not Created'}`)
+    console.log(`  Delay Ready: ${this.isDelayReady}`)
+    console.log(`  Pitch Ready: ${this.isPitchReady}`)
+    console.log(`  AudioWorklet Support: ${this.audioContext?.audioWorklet ? 'Yes' : 'No'}`)
+
+    if (this.nodePool) {
+      console.log(`  Pool - Delay: ${this.nodePool.getAvailableDelayCount()}/8 available`)
+      console.log(`  Pool - Filter: ${this.nodePool.getAvailableFilterCount()}/8 available`)
+      console.log(`  Pool - Pitch: ${this.nodePool.getAvailablePitchCount()}/8 available`)
+
+      // Check if pitch nodes are actually working
+      const pitchUnavailable = 8 - this.nodePool.getAvailablePitchCount()
+      if (pitchUnavailable === 0 && !this.isPitchReady) {
+        console.log(`  🔴 Pitch Issue: No pitch nodes available and worklet not ready (likely mobile/browser incompatibility)`)
+      } else if (this.isPitchReady && this.nodePool.getAvailablePitchCount() === 8) {
+        console.log(`  ✅ Pitch Status: All nodes available and worklet ready`)
+      }
+    } else {
+      console.log(`  Node Pool: Not Available`)
+    }
+
+    console.log(`  Active Sources: ${this.activeSources.size}`)
+
+    // Test for common mobile issues
+    if (typeof window !== 'undefined') {
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log(`  Mobile Device: ${isMobile ? 'Yes' : 'No'}`)
+
+      if (isMobile && !this.isPitchReady) {
+        console.log(`  📱 Mobile Pitch Issue: Pitch effects likely not supported on this mobile browser`)
+      }
+    }
   }
 }

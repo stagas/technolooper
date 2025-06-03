@@ -249,25 +249,39 @@ function loadActiveCellsFromUrl(): void {
 
 // Toggle cell state
 function toggleCell(index: number): void {
-  if (index < 0 || index >= getGridSize()) return
+  if (index < 0 || index >= gridCells.length) return
 
-  // Handle control mode
-  const controlState = getControlState()
-  if (controlState.isActive && controlState.mode === 'cellSelection') {
-    // Select this cell for control
-    if (gridCells[index].stem) {
-      selectCellForControl(index)
+  const cell = gridCells[index]
+  if (!cell.stem) return
+
+  // Resume audio context if needed (for mobile)
+  if (audioScheduler.isAudioInitialized()) {
+    audioScheduler.resumeAudioContext().catch(error => {
+      console.warn('Failed to resume audio context:', error)
+    })
+
+    // Check if audio is actually working on mobile
+    const status = audioScheduler.getMobileAudioStatus()
+    if (!status.isWorking) {
+      console.warn('📱 Audio not working when trying to activate cell:', status.issues)
+      console.warn('📱 Try tapping elsewhere on the screen to resume audio')
     }
+  }
+
+  // Only allow toggle if in cell selection mode
+  const controlState = getControlState()
+  if (controlState.mode === 'cellSelection' && controlState.isActive) {
+    selectCellForControl(index)
     return
   }
 
   // Normal toggle behavior
-  if (gridCells[index].stem) {
-    const wasActive = gridCells[index].isActive
-    gridCells[index].isActive = !gridCells[index].isActive
+  if (cell.stem) {
+    const wasActive = cell.isActive
+    cell.isActive = !cell.isActive
 
     // If cell became inactive, release any pooled nodes
-    if (wasActive && !gridCells[index].isActive) {
+    if (wasActive && !cell.isActive) {
       const params = getCellParameters(index)
       if (params.delayWet > 0) {
         nodePool.releaseDelayNode(index)
@@ -412,11 +426,28 @@ function setupEventListeners(): void {
       audioInitialized = true
       try {
         await audioScheduler.initializeAudio()
+        // Explicitly resume audio context for mobile browsers
+        await audioScheduler.resumeAudioContext()
+
+        // Check mobile audio status
+        const status = audioScheduler.getMobileAudioStatus()
+        if (!status.isWorking) {
+          console.warn('📱 Mobile audio issues detected:', status.issues)
+          updateLoadingStatus(`Audio setup incomplete. Try tapping the screen.`)
+          setTimeout(() => {
+            updateLoadingStatus('Loading stems...')
+          }, 3000)
+        } else {
+          console.log('✅ Audio initialized successfully on first interaction')
+        }
+
         audioScheduler.start()
         // Update with current active cells
         await audioScheduler.updateActiveStems(getActiveCells(), gridCells, getCellParameters)
       } catch (error) {
-        console.error('Error initializing audio:', error)
+        console.error('❌ Error initializing audio:', error)
+        audioInitialized = false // Reset so we can try again
+        updateLoadingStatus(`Audio initialization failed. Please reload the page.`)
       }
     }
   }
@@ -433,9 +464,31 @@ function setupEventListeners(): void {
     }, 150)
   })
 
-  // Initialize audio on first pointer interaction
+  // Initialize audio on first user interaction - cover all mobile events
   document.addEventListener('pointerdown', initializeAudioOnFirstInteraction, { once: true })
   document.addEventListener('click', initializeAudioOnFirstInteraction, { once: true })
+  document.addEventListener('touchstart', initializeAudioOnFirstInteraction, { once: true, passive: true })
+  document.addEventListener('touchend', initializeAudioOnFirstInteraction, { once: true, passive: true })
+
+  // Add persistent audio context resume for mobile (after initial audio setup)
+  function resumeAudioIfSuspended(): void {
+    if (audioScheduler.isAudioInitialized()) {
+      const status = audioScheduler.getMobileAudioStatus()
+      if (status.state === 'suspended') {
+        console.log('📱 Resuming suspended audio context on user interaction')
+        audioScheduler.resumeAudioContext()
+      }
+    }
+  }
+
+  // Add listeners that persist after initial audio setup for mobile browsers
+  setTimeout(() => {
+    if (audioInitialized) {
+      document.addEventListener('touchstart', resumeAudioIfSuspended, { passive: true })
+      document.addEventListener('click', resumeAudioIfSuspended)
+      console.log('📱 Added persistent mobile audio resume handlers')
+    }
+  }, 1000)
 
   // Prevent default touch behaviors on the grid
   const container = document.getElementById('grid') as HTMLElement
@@ -871,5 +924,88 @@ export const looper = {
   },
 
   // Master effect parameters
-  getMasterEffectParameters: () => getMasterEffectParameters(),
+  getMasterEffectParameters: (): MasterEffectParameters => {
+    return getMasterEffectParameters()
+  },
+
+  debugMobileAudio: (): void => {
+    const status = audioScheduler.getMobileAudioStatus()
+    console.log('📱 Mobile Audio Status:', status)
+    if (!status.isWorking) {
+      console.log('📱 Audio Issues:', status.issues)
+      console.log('📱 Try tapping the screen to resume audio context')
+    }
+    // Also run full audio status debug
+    audioScheduler.getFullAudioStatus()
+  },
+
+  // Debug method specifically for pitch issues
+  debugPitchIssues: (): void => {
+    console.log('🎵 Pitch Debug Information:')
+
+    const pitchAvailable = nodePool.getAvailablePitchCount()
+    const totalPitchNodes = 8
+    const assignedPitchNodes = totalPitchNodes - pitchAvailable
+
+    console.log(`  Available Pitch Nodes: ${pitchAvailable}/${totalPitchNodes}`)
+    console.log(`  Assigned Pitch Nodes: ${assignedPitchNodes}`)
+
+    if (pitchAvailable === 0 && assignedPitchNodes === 0) {
+      console.log('  🔴 Issue: No pitch nodes created - likely browser/device incompatibility')
+      console.log('  📱 Pitch effects require AudioWorklet + WebAssembly support')
+      console.log('  📱 Many mobile browsers do not support these features')
+    } else if (pitchAvailable === 0) {
+      console.log('  ⚠️ Issue: All pitch nodes are currently in use')
+      console.log('  💡 Try stopping some cells or resetting to free up pitch nodes')
+    } else {
+      console.log('  ✅ Pitch nodes are available and should work')
+    }
+
+    // Check which cells are using pitch
+    for (let i = 0; i < gridCells.length; i++) {
+      const params = getCellParameters(i)
+      if (Math.abs(params.pitchRatio - 1) > 0.001) {
+        const pitchIndex = nodePool.getPitchNodeIndex(i)
+        console.log(`  Cell ${i}: Using pitch node ${pitchIndex}, ratio: ${params.pitchRatio.toFixed(2)}x`)
+      }
+    }
+
+    // Run full audio status for additional context
+    audioScheduler.getFullAudioStatus()
+  },
+
+  // Debug method specifically for delay issues
+  debugDelayIssues: (): void => {
+    console.log('🔄 Delay Debug Information:')
+
+    const delayAvailable = nodePool.getAvailableDelayCount()
+    const totalDelayNodes = 8
+    const assignedDelayNodes = totalDelayNodes - delayAvailable
+
+    console.log(`  Available Delay Nodes: ${delayAvailable}/${totalDelayNodes}`)
+    console.log(`  Assigned Delay Nodes: ${assignedDelayNodes}`)
+
+    if (delayAvailable === 0 && assignedDelayNodes === 0) {
+      console.log('  🔴 Issue: No delay nodes created - likely browser/device incompatibility')
+      console.log('  📱 Delay effects require AudioWorklet support')
+      console.log('  📱 Many mobile browsers do not support this feature')
+    } else if (delayAvailable === 0) {
+      console.log('  ⚠️ Issue: All delay nodes are currently in use')
+      console.log('  💡 Try stopping some cells or resetting to free up delay nodes')
+    } else {
+      console.log('  ✅ Delay nodes are available and should work')
+    }
+
+    // Check which cells are using delay
+    for (let i = 0; i < gridCells.length; i++) {
+      const params = getCellParameters(i)
+      if (params.delayWet > 0) {
+        const delayIndex = nodePool.getDelayNodeIndex(i)
+        console.log(`  Cell ${i}: Using delay node ${delayIndex}, wet: ${(params.delayWet * 100).toFixed(0)}%`)
+      }
+    }
+
+    // Run full audio status for additional context
+    audioScheduler.getFullAudioStatus()
+  },
 }
